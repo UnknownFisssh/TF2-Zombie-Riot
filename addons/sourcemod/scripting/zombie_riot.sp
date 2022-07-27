@@ -342,6 +342,11 @@ bool b_ThisNpcIsSawrunner[MAXENTITIES];
 float f_LowTeslarDebuff[MAXENTITIES];
 float f_HighTeslarDebuff[MAXENTITIES];
 
+float f_WidowsWineDebuff[MAXENTITIES];
+float f_WidowsWineDebuffPlayerCooldown[MAXENTITIES];
+
+#define FL_WIDOWS_WINE_DURATION 5.0
+
 //ATTRIBUTE ARRAY SUBTITIUTE
 //ATTRIBUTE ARRAY SUBTITIUTE
 //ATTRIBUTE ARRAY SUBTITIUTE
@@ -470,6 +475,7 @@ char PerkNames[][] =
 	"Double Tap",
 	"Speed Cola",
 	"Deadshot Daiquiri",
+	"Widows Wine",
 };
 
 char PerkNames_Recieved[][] =
@@ -479,7 +485,8 @@ char PerkNames_Recieved[][] =
 	"Juggernog Recieved",
 	"Double Tap Recieved",
 	"Speed Cola Recieved",
-	"Deadshot Daiquiri Recieved"
+	"Deadshot Daiquiri Recieved",
+	"Widows Wine Recieved",
 };
 
 enum
@@ -1183,6 +1190,7 @@ public void OnMapStart()
 	PrecacheSound("zombiesurvival/headshot2.wav");
 	PrecacheSound("misc/halloween/clock_tick.wav");
 	PrecacheSound("mvm/mvm_bomb_warning.wav");
+	PrecacheSound("weapons/jar_explode.wav");
 	
 	MapStartResetAll();
 	EscapeMode = false;
@@ -3249,6 +3257,7 @@ public void OnEntityDestroyed(int entity)
 			OnEntityDestroyed_BackPack(entity);
 			
 			RemoveNpcThingsAgain(entity);
+			IsCustomTfGrenadeProjectile(entity, 0.0);
 			
 			if(h_NpcCollissionHookType[entity] != 0)
 			{
@@ -3526,6 +3535,7 @@ public Action Hook_BlockUserMessageEx(UserMsg msg_id, BfRead msg, const int[] pl
 
 public void MapStartResetAll()
 {
+	Zero(f_WidowsWineDebuffPlayerCooldown);
 	Zero(f_TempCooldownForVisualManaPotions);
 	Zero(i_IsABuilding);
 	Zero(f_DelayLookingAtHud);
