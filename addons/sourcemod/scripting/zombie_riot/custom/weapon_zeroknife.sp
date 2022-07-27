@@ -17,7 +17,7 @@ public void ZeroAoeKnife(int client, int weapon, bool crit)
 	if(how_many_times_fisted[client] >= 3)
 	{
 		CreateTimer(0.15, ASX_Timer5, client, TIMER_FLAG_NO_MAPCHANGE);
-		CreateTimer(0.2, Apply_Effect, client, TIMER_FLAG_NO_MAPCHANGE);
+		Client_Shake(client, 0, 25.0, 15.0, 0.25);
 		how_many_times_fisted[client] = 0;
 	}
 	else
@@ -31,6 +31,7 @@ public void ZeroAoeKnife_pap(int client, int weapon, bool crit)
 	if(how_many_times_fisted[client] >= 2)
 	{
 		CreateTimer(0.15, ASX_Timer5_pap, client, TIMER_FLAG_NO_MAPCHANGE);
+		Client_Shake(client, 0, 25.0, 15.0, 0.25);
 		how_many_times_fisted[client] = 0;
 	}
 	else
