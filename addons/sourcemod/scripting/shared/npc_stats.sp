@@ -1518,7 +1518,7 @@ methodmap CClotBody < CBaseCombatCharacter
 			return 1.0;
 		}
 #if defined ZR
-		if(i_npcspawnprotection[this.index] == 1)
+		if(i_npcspawnprotection[this.index] == NPC_SPAWNPROT_ON)
 		{
 			if(!Rogue_Mode())
 				return 400.0;
@@ -2883,12 +2883,12 @@ methodmap CClotBody < CBaseCombatCharacter
 			SetEntityModel(entity, PARTICLE_ROCKET_MODEL);
 	
 			//Make it entirely invis. Shouldnt even render these 8 polygons.
-			SetEntProp(entity, Prop_Send, "m_fEffects", GetEntProp(entity, Prop_Send, "m_fEffects") &~ EF_NODRAW);
 			if(hide_projectile)
 			{
 				SetEntityRenderMode(entity, RENDER_NONE); //Make it entirely invis.
 				SetEntityRenderColor(entity, 255, 255, 255, 0);
 			}
+			Hook_DHook_UpdateTransmitState(entity);
 			
 			int particle = 0;
 	
@@ -4628,7 +4628,7 @@ stock bool IsValidEnemy(int index, int enemy, bool camoDetection=false, bool tar
 			}
 			if(b_ThisWasAnNpc[index])
 			{
-				if(i_npcspawnprotection[enemy] > 0 && i_npcspawnprotection[enemy] != 3)
+				if(i_npcspawnprotection[enemy] > NPC_SPAWNPROT_INIT && i_npcspawnprotection[enemy] != NPC_SPAWNPROT_UNSTUCK)
 				{
 					return false;
 				}
@@ -5841,12 +5841,12 @@ public void NpcBaseThink(int iNPC)
 			{
 				HealingAmount *= 0.025;
 				//this means it uses scaling somehow.
-				HpScalingDecrease = NpcDoHealthRegenScaling();
+				HpScalingDecrease = NpcDoHealthRegenScaling(iNPC);
 			}
 			else if(b_thisNpcIsABoss[iNPC])
 			{
 				HealingAmount *= 0.125;
-				HpScalingDecrease = NpcDoHealthRegenScaling();
+				HpScalingDecrease = NpcDoHealthRegenScaling(iNPC);
 			}
 			if(NpcStats_StrongVoidBuff(iNPC))
 				HealingAmount *= 1.25;
@@ -5963,9 +5963,31 @@ public void NpcBaseThink(int iNPC)
 	}
 	*/
 }
-stock float NpcDoHealthRegenScaling()
+stock float NpcDoHealthRegenScaling(int iNPC)
 {
-	return (float(CountPlayersOnRed(1)) / float(CountPlayersOnRed(0)));
+#if defined ZR
+	if(GetTeam(iNPC) == TFTeam_Red)
+		return 1.0;
+	//not allies.
+	
+	float ValueDo = 1.0;
+	if(b_thisNpcIsARaid[iNPC] || b_thisNpcIsABoss[iNPC])
+	{
+		//we want to assume that we never scale above like 14 players, if it is, then we scale the HP regen down.
+		int AliveAssume = CountPlayersOnRed(1);
+		if(AliveAssume > 14)
+			AliveAssume = 14;
+		ValueDo = float(AliveAssume) / float(CountPlayersOnRed(0));
+	}
+	else
+	{
+		//if normal enemeis scale higher interms of HP, then we want to tune down the health regen.
+		ValueDo = 1.0 / MultiGlobalHealth;
+	}
+	return ValueDo;
+#else
+	return 1.0;
+#endif
 }
 public void NpcSetGravity(CClotBody npc, int iNPC)
 {
@@ -6299,7 +6321,7 @@ void UnstuckStuckNpc(CClotBody npc)
 			GetEntPropVector(Spawner_entity, Prop_Data, "m_vecOrigin", pos);
 			GetEntPropVector(Spawner_entity, Prop_Data, "m_angRotation", ang);
 			TeleportEntity(npc.index, pos, ang, NULL_VECTOR);
-			i_npcspawnprotection[npc.index] = 1;
+			i_npcspawnprotection[npc.index] = NPC_SPAWNPROT_UNSTUCK;
 			CreateTimer(3.0, Remove_Spawn_Protection, EntIndexToEntRef(npc.index), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
@@ -6593,7 +6615,7 @@ public void NpcJumpThink(int iNPC)
 stock int Can_I_See_Enemy(int attacker, int enemy, bool Ignore_Buildings = false, float EnemyModifpos[3] = {0.0,0.0,0.0})
 {
 	//assume that if we are tragetting an enemy, dont do anything.
-	if(i_npcspawnprotection[attacker] > 0 && i_npcspawnprotection[attacker] != 3)
+	if(i_npcspawnprotection[attacker] > NPC_SPAWNPROT_INIT && i_npcspawnprotection[attacker] != NPC_SPAWNPROT_UNSTUCK)
 	{
 		if(!IsValidAlly(attacker, enemy))
 			return 0;
@@ -6635,7 +6657,7 @@ stock int Can_I_See_Enemy(int attacker, int enemy, bool Ignore_Buildings = false
 bool Can_I_See_Enemy_Only(int attacker, int enemy, float pos_npc[3] = {0.0,0.0,0.0})
 {
 	//assume that if we are tragetting an enemy, dont do anything.
-	if(i_npcspawnprotection[attacker] > 0 && i_npcspawnprotection[attacker] != 3)
+	if(i_npcspawnprotection[attacker] > NPC_SPAWNPROT_INIT && i_npcspawnprotection[attacker] != NPC_SPAWNPROT_UNSTUCK)
 	{
 		if(!IsValidAlly(attacker, enemy))
 			return false;
@@ -8621,7 +8643,7 @@ public void SetDefaultValuesToZeroNPC(int entity)
 	IgniteRef[entity] = -1;
 	f_CreditsOnKill[entity] = 0.0;
 	i_PluginBot_ApproachDelay[entity] = 0;
-	i_npcspawnprotection[entity] = 0;
+	i_npcspawnprotection[entity] = NPC_SPAWNPROT_INIT;
 	f_DomeInsideTest[entity] = 0.0;
 	f_CooldownForHurtParticle[entity] = 0.0;
 	f_DelayComputingOfPath[entity] = GetGameTime() + 0.2;
@@ -9832,7 +9854,8 @@ void NpcStartTouch(int TouchedTarget, int target, bool DoNotLoop = false)
 {
 	int entity = TouchedTarget;
 	CClotBody npc = view_as<CClotBody>(entity);
-	if(target > 0 && i_npcspawnprotection[entity] > 0 && i_npcspawnprotection[entity] != 3)
+#if defined ZR
+	if(target > 0 && entity > MaxClients && i_npcspawnprotection[entity] > NPC_SPAWNPROT_INIT && i_npcspawnprotection[entity] != NPC_SPAWNPROT_UNSTUCK)
 	{
 		if(IsValidEnemy(entity, target, true, true)) //Must detect camo.
 		{
@@ -9848,6 +9871,7 @@ void NpcStartTouch(int TouchedTarget, int target, bool DoNotLoop = false)
 			SDKHooks_TakeDamage(target, entity, entity, DamageDeal, DamageFlags, -1, _);
 		}
 	}
+#endif
 	if(!DoNotLoop && !b_NpcHasDied[target] && !IsEntityTowerDefense(target) && GetTeam(entity) != TFTeam_Stalkers) //If one entity touches me, then i touch them
 	{
 		NpcStartTouch(target, entity, true);
@@ -10279,7 +10303,7 @@ public void TeleportBackToLastSavePosition(int entity)
 {
 	if(f3_VecTeleportBackSave_OutOfBounds[entity][0] != 0.0)
 	{
-		i_npcspawnprotection[entity] = 3;
+		i_npcspawnprotection[entity] = NPC_SPAWNPROT_UNSTUCK;
 		CreateTimer(3.0, Remove_Spawn_Protection, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
 		f_GameTimeTeleportBackSave_OutOfBounds[entity] = GetGameTime() + 2.0; //was stuck, lets just chill.
 		TeleportEntity(entity, f3_VecTeleportBackSave_OutOfBounds[entity], NULL_VECTOR ,{0.0,0.0,0.0});
@@ -10720,7 +10744,7 @@ void IsEntityInvincible_Shield(int entity)
 
 #if defined ZR
 //This is not neccecary in RPG.
-	if(i_npcspawnprotection[entity] == 1)
+	if(i_npcspawnprotection[entity] == NPC_SPAWNPROT_ON || i_npcspawnprotection[entity] == NPC_SPAWNPROT_UNSTUCK)
 		NpcInvulShieldDisplay = 2;
 #endif
 	if(IsInvuln(entity, true))
