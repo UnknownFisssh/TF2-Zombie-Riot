@@ -2,7 +2,15 @@
 #pragma newdecls required
 
 //BASE OFF IT RN
- 
+//Pablo will get an RNG weapon system 
+//upon getting the Amby, he will do the new guntaunt after that he fully shoots a big laser like attack
+//anything that hits it gets debuffed for 10-20s, the first victim however gets damaged.
+//Le Etrangle shoots fast deals weak damage last bullet is a aoe attack.
+//Teleport of devastation, Pablo does the comp animation (wait/loose) after that teleports behind the victim 
+//upon teleporting, Pablo does a Ion strike. Anyone near the victim will create more ion strikes
+//whoever had the ion strike gets the full damage, anyone else takes less by 55%.
+//Rage. upon activation pablo is doing the disco taunt and gains 50% resistance, doing repeated AoE effects.
+
 static char g_DeathSounds[][] = {
 	"npc/zombie/zombie_die1.wav",
 };
