@@ -11,6 +11,8 @@
 //whoever had the ion strike gets the full damage, anyone else takes less by 55%.
 //Rage. upon activation pablo is doing the disco taunt and gains 50% resistance, doing repeated AoE effects.
 
+//Add "trickstab" knockbacks the victim and he gains an attack rate buff.
+
 static char g_DeathSounds[][] = {
 	"npc/zombie/zombie_die1.wav",
 };
