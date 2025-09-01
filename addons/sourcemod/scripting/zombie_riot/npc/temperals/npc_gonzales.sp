@@ -234,7 +234,7 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void GetAnimUsage(int usage)
 	{
-		bool off = false;
+		bool disable = false;
 		switch(usage)
 		{
 			case 0, 3:
@@ -243,8 +243,8 @@ methodmap Pablo_Gonzales < CClotBody
 			}
 			case 1://Amby Laser Taunt
 			{
-				this.AnimChanger(1, "taunt_the_punchline");
-				off = true;
+				this.AnimChanger(1, "taunt_the_punchline",_, _, false);
+				disable = true;
 			}
 			case 2:
 			{
@@ -252,10 +252,11 @@ methodmap Pablo_Gonzales < CClotBody
 			}
 			case 4://Rage Taunt
 			{
-				off = true;
+				this.AnimChanger(1, "taunt06", _, _, false);
+				disable = true;
 			}
 		}
-		this.ClearanceHelp(off);
+		this.ClearanceHelp(disable);
 	}
 	public void ChangeWeapons(int usage = 0)//DEFAULT IS MELEE
 	{
@@ -297,9 +298,9 @@ methodmap Pablo_Gonzales < CClotBody
 		if(weaponchar[0])
 			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
 	}
-	public void ClearanceHelp(bool off = false)
+	public void ClearanceHelp(bool disable = false)
 	{
-		if(!off)
+		if(!disable)
 		{
 			ApplyStatusEffect(this.index, this.index, "Clear Head", FAR_FUTURE);	
 			ApplyStatusEffect(this.index, this.index, "Solid Stance", FAR_FUTURE);	
