@@ -435,7 +435,7 @@ stock void Temperals_SingleDamage_Melee(DataPack data)
 					Call_PushCell(entity);
 					Call_PushCell(target);
 					Call_PushFloat(damage);
-					Call_PushCell(PlaySound);
+					//Call_PushCell(PlaySound);
 					Call_Finish();
 				}
 				SDKHooks_TakeDamage(target, npc.index, npc.index, damage, DMG_CLUB, -1, _, vecHit);

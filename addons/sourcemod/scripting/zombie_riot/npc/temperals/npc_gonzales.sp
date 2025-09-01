@@ -557,7 +557,7 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				DataPack pack = new DataPack();
 				pack.WriteCell(EntIndexToEntRef(npc.index));
 				pack.WriteFloat(damage);
-				pack.WriteFunction(INVALID_FUNCTION);
+				pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : INVALID_FUNCTION);
 				pack.WriteFloat(trick ? 300.0 : 0.0);
 				RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
 			}
@@ -582,6 +582,13 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 	//		}
 	//	}
 	//}
+}
+
+static void Pablo_OnHit_Trickstab(int entity, int victim, float damage)
+{
+	//Add trickstab buff attack speed in here.
+	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(entity);
+	npc.fl_Weapon_Timer = 0.0;
 }
 
 static Action Pablo_Gonzales_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
