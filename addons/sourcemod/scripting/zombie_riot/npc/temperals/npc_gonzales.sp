@@ -13,6 +13,8 @@
 
 //Add "trickstab" knockbacks the victim and he gains an attack rate buff.
 
+static int i_LaserHits = 0;
+
 static char g_DeathSounds[][] = {
 	"npc/zombie/zombie_die1.wav",
 };
@@ -67,7 +69,7 @@ public void Pablo_Gonzales_OnMapStart_NPC()
 	PrecacheSoundArray(g_RageSound);
 	PrecacheSoundArray(g_BackstabSounds);
 	PrecacheSoundArray(g_BackstabSFX);
-	PrecacheSoundCustom("#zombiesurvival/temperals/raids/phlog_bgm.mp3");
+	PrecacheSoundCustom("#zombiesurvival/temperals/special/gonzales_bgm.mp3");
 
 	NPCData data;
 	strcopy(data.Name, sizeof(data.Name), "Pablo Gonzales");
@@ -122,6 +124,21 @@ methodmap Pablo_Gonzales < CClotBody
 		public get()							{ return fl_AbilityOrAttack[this.index][0]; }
 		public set(float TempValueForProperty) 	{ fl_AbilityOrAttack[this.index][0] = TempValueForProperty; }
 	}
+	property float fl_AbilityGain_Timer
+	{
+		public get()							{ return fl_AbilityOrAttack[this.index][1]; }
+		public set(float TempValueForProperty) 	{ fl_AbilityOrAttack[this.index][1] = TempValueForProperty; }
+	}
+	property float fl_Delay_RageEffect
+	{
+		public get()							{ return fl_AbilityOrAttack[this.index][2]; }
+		public set(float TempValueForProperty) 	{ fl_AbilityOrAttack[this.index][2] = TempValueForProperty; }
+	}
+	property float fl_Trickstab_Buff
+	{
+		public get()							{ return fl_AbilityOrAttack[this.index][3]; }
+		public set(float TempValueForProperty) 	{ fl_AbilityOrAttack[this.index][3] = TempValueForProperty; }
+	}
 	public void PlayBackstabSfx(int target)
 	{
 		EmitSoundToAll(g_BackstabSounds[GetRandomInt(0, sizeof(g_BackstabSounds) - 1)], this.index, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
@@ -169,13 +186,31 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void Rage()
 	{
+		float gameTime = GetGameTime(npc.index);
 		this.fl_Rage_Amount -= this.fl_Rage_Requirement;
+		float timer = this.fl_AbilityGain_Timer - gameTime;
+		if(timer < 4.0)
+		{
+			this.fl_AbilityGain_Timer += 4.0;
+		}
+		else if(timer <= 0.0)
+		{
+			this.fl_AbilityGain_Timer = gameTime + 4.0;
+		}
 		this.PlayRageSound();
+		
 		//ADD RAGE STUFF HERE
 	}
 	public bool Rage_FullyCharged()
 	{
 		return (this.fl_Rage_Amount >= this.fl_Rage_Requirement);
+	}
+	public bool DenyRageUsage()
+	{
+		if(this.i_WeaponArg == 1 || this.i_WeaponArg == 3 || this.i_WeaponArg == 4)
+			return true;
+		
+		return false;
 	}
 	public void Rage_Requirement_Value()
 	{
@@ -225,13 +260,6 @@ methodmap Pablo_Gonzales < CClotBody
 			RemoveEntity(this.m_iWearable6);
 		}
 	}
-	public bool DenyRageUsage()
-	{
-		if(this.i_WeaponArg == 1 || this.i_WeaponArg == 3 || this.i_WeaponArg == 4)
-			return true;
-		
-		return false;
-	}
 	public void GetAnimUsage(int usage)
 	{
 		bool disable = false;
@@ -266,6 +294,7 @@ methodmap Pablo_Gonzales < CClotBody
 		switch(usage)
 		{
 			case 1: {
+				i_LaserHits = 0;
 				weaponchar = "models/weapons/c_models/c_ambassador/c_ambassador.mdl";
 				timer = 6.35;
 				this.fl_LaserGun_AboutToShoot = GetGameTime(this.index) + (timer/2);
@@ -313,6 +342,17 @@ methodmap Pablo_Gonzales < CClotBody
 			RemoveSpecificBuff(this.index, "Fluid Movement");
 		}
 	}
+	public void CleanUpPreset()
+	{
+		this.fl_Weapon_Timer = 0.0;
+		this.fl_Delay_RageEffect = 0.0;
+		this.fl_Rage_Amount = 0.0;
+		this.fl_LaserGun_AboutToShoot = 0.0;
+		this.fl_AbilityGain_Timer = GetGameTime(this.index) + 10.0;
+		this.i_Stabbed = 0;
+		this.m_flNextMeleeAttack = 0.0;
+		this.Rage_Requirement_Value();
+	}
 
 	public Pablo_Gonzales(float vecPos[3], float vecAng[3], int ally, const char[] data)
 	{
@@ -326,17 +366,17 @@ methodmap Pablo_Gonzales < CClotBody
 
 		bool clone = StrContains(data, "clone") != -1;
 		npc.m_fbGunout = clone ? true : false;
-
-		npc.m_flNextMeleeAttack = 0.0;
 		
 		npc.m_iBleedType = BLEEDTYPE_NORMAL;
 		npc.m_iStepNoiseType = STEPSOUND_GIANT;	
 		npc.m_iNpcStepVariation = STEPTYPE_NORMAL;
 		npc.m_bDissapearOnDeath = true;
-		npc.i_Stabbed = 0;
+
+		npc.CleanUpPreset();
 		
 		if(!clone)
 		{
+			bool noscaling = !(StrContains(data, "Scaling") != -1);
 			RaidBossStatus Raid;
 			Raid.israid = false; //If raid true, If superboss false
 			Raid.allow_builings = true;
@@ -344,14 +384,24 @@ methodmap Pablo_Gonzales < CClotBody
 			Raid.Reduction_60 = 0.3;
 			Raid.Reduction_Last = 0.4;
 			Raid.RaidTime = 300.0;
-			Raid.ignore_scaling = !(StrContains(data, "Scaling") != -1);
+			Raid.ignore_scaling = noscaling;
 			
 			//If you want to check if there is already a raid, and want to add args for that !Raid.Setup(true, npc);
 			//viceversa
 			if(Raid.Setup(true, npc, data))//We are the raid!, if not use else or Check()
 			{
 				//add additional things
-				RaidModeScaling = 0.0;
+				if(noscaling)
+					RaidModeScaling = 0.0;
+				
+				npc.m_iWearable5 = TF2_CreateGlow_White(npc.index, "models/player/spy.mdl", npc.index, 1.35);
+				if(IsValidEntity(npc.m_iWearable5))
+				{
+					SetEntProp(npc.m_iWearable5, Prop_Send, "m_bGlowEnabled", false);
+					SetEntityRenderMode(npc.m_iWearable5, RENDER_ENVIRONMENTAL);
+					//Cannot be used on the actual npc. Reason is, for whatever reason fire removes it.
+					Start_TE_Body_Effect(npc.m_iWearable5, "utaunt_heavyrain_parent");
+				}
 			}
 			//Normal npcs, if there is a raid going on and they managed to get spawned
 			//if(Raid.Check())//if there is a raid going lets this arg instead
@@ -359,22 +409,18 @@ methodmap Pablo_Gonzales < CClotBody
 			//	the stuff
 			//}
 
-			Raid.PlayMusic("#zombiesurvival/temperals/raids/phlog_bgm.mp3", "Quake II - Rage (Cover)", "DoomDood", 151);
+			Raid.PlayMusic("#zombiesurvival/temperals/special/gonzales_bgm.mp3", "Discussion -PANIC- Instrumental Mix Cover (Danganronpa)", "Vetrom", 215);
 		}
-		
-		SetEntProp(npc.index, Prop_Send, "m_nSkin", 1);
+		int skin = 1;
+		SetEntProp(npc.index, Prop_Send, "m_nSkin", skin);
 
 		//SetVariantInt(1);
 		//AcceptEntityInput(npc.index, "SetBodyGroup");
-
-		int skin = 1;
+		
 		npc.m_iWearable1 = npc.EquipItem("head", "models/player/items/all_class/ghostly_gibus_spy.mdl", "", skin);
 		npc.m_iWearable2 = npc.EquipItem("head", "models/player/items/all_class/all_class_oculus_spy_on.mdl", "", skin);
 		npc.m_iWearable3 = npc.EquipItem("head", "models/workshop/player/items/spy/spr17_the_upgrade/spr17_the_upgrade.mdl", "", skin);
 		npc.m_iWearable4 = npc.EquipItem("head", "models/workshop/player/items/scout/robo_all_mvm_canteen/robo_all_mvm_canteen.mdl", "", skin);
-		//npc.m_iWearable5 = npc.EquipItem("head", "models/workshop/player/items/pyro/hwn2020_fire_tooth/hwn2020_fire_tooth.mdl", "", skin);
-		//npc.m_iWearable6 = npc.EquipItem("head", "models/workshop/player/items/all_class/hwn2021_bone_cone_style2/hwn2021_bone_cone_style2_pyro.mdl", "", skin);
-		//TE_Particle("utaunt_cremation_black_parent", OFF_THE_MAP_NONCONST, _, _, npc.index);
 		//IDLE
 		
 		func_NPCDeath[npc.index] = Pablo_Gonzales_NPCDeath;
@@ -385,8 +431,6 @@ methodmap Pablo_Gonzales < CClotBody
 		npc.StartPathing();
 		if(!clone)
 			npc.PlayIntro();
-	
-		npc.Rage_Requirement_Value();
 
 		return npc;
 	}
@@ -420,38 +464,53 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			npc.AddGesture("ACT_MP_GESTURE_FLINCH_CHEST", false);
 		npc.PlayHurtSound();
 	}
-
+	npc.Anger = !npc.Anger;//Passively angry!, cause he sucks ingame.
 	if(!npc.Anger)
 	{
-		npc.Anger = true;
+		npc.m_flSpeed = (fl_DefaultSpeed_Pablo_Gonzales * 1.07);
+	}
+	else
+	{
+		npc.m_flSpeed = fl_DefaultSpeed_Pablo_Gonzales;
 	}
 	
 	if(npc.m_flNextThinkTime > gameTime)
 	{
 		return;
 	}
+
 	switch(npc.i_WeaponArg)
 	{
 		case 0:
 		{
-
+			if(npc.fl_AbilityGain_Timer < gameTime)
+			{
+				int abilityRng = GetRandomInt(1, 3);
+				npc.ChangeWeapons(abilityRng);
+			}
 		}
 		case 4:
 		{
 			//Add all logic in here
+			if(npc.fl_Weapon_Timer < gameTime)
+			{
+				npc.i_WeaponArg = 5;
+			}
+			else
+			{
+				
+			}
 		}
 		default:
 		{
-			if(npc.fl_Weapon_Timer < gameTime)
+			if(npc.fl_Weapon_Timer && npc.fl_Weapon_Timer < gameTime)
 			{
 				npc.AnimChanger(_, "ACT_MP_RUN_MELEE");
 				npc.ChangeWeapons();
+				npc.fl_Weapon_Timer = 0.0;
+				npc.fl_AbilityGain_Timer = gameTime + 12.0;
 			}
 		}
-	}
-	if(npc.i_WeaponArg != 0)
-	{
-
 	}
 	
 	npc.m_flNextThinkTime = gameTime + 0.1;
@@ -497,24 +556,57 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		if(npc.i_WeaponArg == 4)
 		{
 			float time = npc.fl_LaserGun_AboutToShoot - gameTime;
-			if(time == 99999.0)
+			if(time >= 99999.0 || time < 3.35 && time > 3.0)
 			return;
+
 			int color[4] = {40, 60, 255, 255};
-			if(time < 4.0)
+			bool shoot = false;
+			if(time < 2.0)
 			{
 				color = {255, 40, 60, 255};
-				npc.fl_LaserGun_AboutToShoot = 99999.0;
+				npc.fl_LaserGun_AboutToShoot = 999999.0;
+				shoot = true;
 			}
 			else
 			{
 				
 			}
-			TE_Cube_Line_Visual(npc, _, vecTarget, VecSelfNpc, color);
+			float radius = 1000.0;
+			TE_Cube_Line_Visual(npc, radius, vecTarget, VecSelfNpc, color);
+			if(shoot)
+			{
+				Ruina_Laser_Logic Laser;
+				Laser.client = npc.index;
+				Laser.Start_Point = VecSelfNpc;
+				Laser.End_Point = vecTarget;
+				Laser.Radius = radius;
+				Laser.DoForwardTrace_Custom(vecTarget, VecSelfNpc, radius);
+				Laser.Enumerate_Simple();
+
+				for (int loop = 0; loop < sizeof(i_Ruina_Laser_BEAM_HitDetected); loop++)
+				{
+					int vic = i_Ruina_Laser_BEAM_HitDetected[loop];
+					if(!vic)
+						break;
+					if(i_LaserHits <= 0)
+					{
+
+					}
+					else
+					{
+						
+					}
+				}
+			}
 			return;
 		}
 		
 		//Target close enough to hit
-		Pablo_Gonzales_SelfDefense(npc, gameTime, npc.m_iTarget, flDistanceToTarget);
+		if(npc.i_WeaponArg != 2)//If it isn't leetrangle
+			Pablo_Gonzales_SelfDefense(npc, gameTime, npc.m_iTarget, flDistanceToTarget);
+		else
+			Pablo_Gonzales_SelfDefense_Gun(npc, gameTime, npc.m_iTarget, flDistanceToTarget);
+		
 	}
 	else
 	{
@@ -526,18 +618,18 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	//npc.PlayIdleSound();
 }
 
+static void On_LaserHit(int client, int target, int damagetype, float damage)
+{
+	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(client);
+	if(i_LaserHits <= 0)
+	{
+
+	}
+	i_LaserHits++;
+}
+
 static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int target, float flDistanceToTarget)
 {
-	//if(npc.m_flNextRangedSpecialAttack)
-	//{
-	//	if(npc.m_flNextRangedSpecialAttack < gameTime)
-	//	{
-	//		npc.m_flNextRangedSpecialAttack = 0.0;
-	//		//Pablo_Gonzales_Hellfire_Attack(npc);
-	//	}
-	//	return;
-	//}
-	
 	if(gameTime > npc.m_flNextMeleeAttack)
 	{
 		if(flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25))
@@ -547,48 +639,70 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 
 			if(IsValidEnemy(npc.index, Enemy_I_See))
 			{
+				bool trickstab_buff = (npc.fl_Trickstab_Buff > gameTime);
 				npc.m_iTarget = Enemy_I_See;
 				float damage = 750.0;
 				npc.PlayMeleeSound();
 				bool trick = view_as<bool>(npc.i_WeaponArg == 3);
-				npc.AddGesture(rng ? "ACT_MP_ATTACK_STAND_MELEE_SECONDARY" : "ACT_MP_ATTACK_STAND_MELEE");
-				npc.m_flNextMeleeAttack = gameTime + 0.6;
+				npc.AddGesture(trick ? "ACT_MP_ATTACK_STAND_MELEE_SECONDARY" : "ACT_MP_ATTACK_STAND_MELEE");
+				float attackrate = trickstab_buff ? 0.27 : 0.65;
+				npc.m_flNextMeleeAttack = gameTime + attackrate;
 				int frames = 11;
 				DataPack pack = new DataPack();
 				pack.WriteCell(EntIndexToEntRef(npc.index));
 				pack.WriteFloat(damage);
-				pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : INVALID_FUNCTION);
+				pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : Pablo_OnHit);
 				pack.WriteFloat(trick ? 300.0 : 0.0);
 				RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
 			}
 		}
 	}
+}
+static void Pablo_Gonzales_SelfDefense_Gun(Pablo_Gonzales npc, float gameTime, int target, float flDistanceToTarget)
+{
+	if(npc.m_flNextRangedSpecialAttack)
+	{
+		if(npc.m_flNextRangedSpecialAttack < gameTime)
+		{
+			npc.m_flNextRangedSpecialAttack = 0.0;
+			//Pablo_Gonzales_Hellfire_Attack(npc);
+		}
+		return;
+	}
 
-	//if(gameTime > npc.m_flNextRangedAttack)
-	//{
-	//	if(flDistanceToTarget > (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25) && flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 10.0))
-	//	{
-	//		int Enemy_I_See;			
-	//		Enemy_I_See = Can_I_See_Enemy(npc.index, target);
-	//				
-	//		if(IsValidEnemy(npc.index, Enemy_I_See))
-	//		{
-	//			npc.m_iTarget = Enemy_I_See;
-	//			npc.PlayMeleeSound();
-	//			npc.AddGesture("ACT_MP_THROW");//ACT_MP_ATTACK_STAND_ITEM1
-	//					
-	//			npc.m_flNextRangedSpecialAttack = gameTime + 0.15;
-	//			npc.m_flNextRangedAttack = gameTime + 1.85;
-	//		}
-	//	}
-	//}
+	if(gameTime > npc.m_flNextRangedAttack)
+	{
+		if(flDistanceToTarget > (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25) && flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 10.0))
+		{
+			int Enemy_I_See;			
+			Enemy_I_See = Can_I_See_Enemy(npc.index, target);
+					
+			if(IsValidEnemy(npc.index, Enemy_I_See))
+			{
+				npc.m_iTarget = Enemy_I_See;
+				npc.PlayMeleeSound();
+				npc.AddGesture("ACT_MP_THROW");//ACT_MP_ATTACK_STAND_ITEM1
+						
+				npc.m_flNextRangedSpecialAttack = gameTime + 0.15;
+				npc.m_flNextRangedAttack = gameTime + 1.85;
+			}
+		}
+	}
 }
 
+static void Pablo_OnHit(int entity, int victim, float damage)
+{
+	//Add trickstab buff attack speed in here.
+	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(entity);
+	npc.PlayMeleeHitSound();
+}
 static void Pablo_OnHit_Trickstab(int entity, int victim, float damage)
 {
 	//Add trickstab buff attack speed in here.
 	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(entity);
 	npc.fl_Weapon_Timer = 0.0;
+	npc.fl_Trickstab_Buff = GetGameTime(npc.index) + 4.0;
+	npc.PlayMeleeHitSound();
 }
 
 static Action Pablo_Gonzales_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
