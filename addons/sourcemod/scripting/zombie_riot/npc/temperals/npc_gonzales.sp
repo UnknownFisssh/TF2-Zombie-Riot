@@ -402,6 +402,7 @@ methodmap Pablo_Gonzales < CClotBody
 					//Cannot be used on the actual npc. Reason is, for whatever reason fire removes it.
 					Start_TE_Body_Effect(npc.m_iWearable5, "utaunt_heavyrain_parent");
 				}
+				CPrintToChat("{crimson}Difficulty {default}- {yellow}⁂");
 			}
 			//Normal npcs, if there is a raid going on and they managed to get spawned
 			//if(Raid.Check())//if there is a raid going lets this arg instead
@@ -579,7 +580,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 				Laser.client = npc.index;
 				Laser.Start_Point = VecSelfNpc;
 				Laser.End_Point = vecTarget;
-				Laser.Radius = radius;
+				Laser.Radius = float(RoundFloat(radius / 28.5));
 				Laser.DoForwardTrace_Custom(vecTarget, VecSelfNpc, radius);
 				Laser.Enumerate_Simple();
 
