@@ -52,6 +52,7 @@ enum struct RaidBossStatus
 	float Reduction_45;
 	float Reduction_60;
 	float Reduction_Last;
+	bool ignore_scaling;
 	
 	bool Setup(bool check = false, CClotBody npc, const char[] data)
 	{
@@ -66,45 +67,46 @@ enum struct RaidBossStatus
 		b_thisNpcIsARaid[npc.index] = this.israid;
 		npc.m_bThisNpcIsABoss = true;
 		RaidModeTime = GetGameTime(npc.index) + this.RaidTime;
-		
-		char buffers[3][64];
-		ExplodeString(data, ";", buffers, sizeof(buffers), sizeof(buffers[]));
-		//the very first and 2nd char are SC for scaling
-		if(buffers[0][0] == 's' && buffers[0][1] == 'c')
+		if(this.ignore_scaling)
 		{
-			//remove SC
-			ReplaceString(buffers[0], 64, "sc", "");
-			float value = StringToFloat(buffers[0]);
-			RaidModeScaling = value;
-		}
-		else
-		{	
-			RaidModeScaling = float(ZR_Waves_GetRound()+1);
-		}
+			char buffers[3][64];
+			ExplodeString(data, ";", buffers, sizeof(buffers), sizeof(buffers[]));
+			//the very first and 2nd char are SC for scaling
+			if(buffers[0][0] == 's' && buffers[0][1] == 'c')
+			{
+				//remove SC
+				ReplaceString(buffers[0], 64, "sc", "");
+				float value = StringToFloat(buffers[0]);
+				RaidModeScaling = value;
+			}
+			else
+			{
+				RaidModeScaling = float(ZR_Waves_GetRound()+1);
+			}
 
-		if(RaidModeScaling < 55)
-		{
-			RaidModeScaling *= 0.19; //abit low, inreacing
-		}
-		else
-		{
-			RaidModeScaling *= 0.38;
-		}
-		
-		float amount_of_people = ZRStocks_PlayerScalingDynamic();
-		if(amount_of_people > 12.0)
-		{
-			amount_of_people = 12.0;
-		}
+			if(RaidModeScaling < 55)
+			{
+				RaidModeScaling *= 0.19; //abit low, inreacing
+			}
+			else
+			{
+				RaidModeScaling *= 0.38;
+			}
+			
+			float amount_of_people = ZRStocks_PlayerScalingDynamic();
+			if(amount_of_people > 12.0)
+			{
+				amount_of_people = 12.0;
+			}
 
-		amount_of_people *= 0.12;
-		
-		if(amount_of_people < 1.0)
-		{
-			amount_of_people = 1.0;
+			amount_of_people *= 0.12;
+			
+			if(amount_of_people < 1.0)
+			{
+				amount_of_people = 1.0;
+			}
+			RaidModeScaling *= amount_of_people; //More then 9 and he raidboss gets some troubles, bufffffffff
 		}
-
-		RaidModeScaling *= amount_of_people; //More then 9 and he raidboss gets some troubles, bufffffffff
 		
 		/*if(!this.Reduction_45)//default
 			this.Reduction_45 = 0.15;
@@ -388,6 +390,75 @@ stock bool Temperlas_MultiLifeCheck(CClotBody npc, float damage, bool cantdie)
 	}
 	
 	return false;
+}
+
+stock void Temperals_SingleDamage_Melee(DataPack data)
+{
+	data.Reset();
+
+	int entity = EntRefToEntIndex(data.ReadCell());
+
+	if(!IsValidEntity(entity))
+	{
+		delete data;
+		return;
+	}
+
+	CClotBody npc = view_as<CClotBody>(entity);
+
+	float damage = data.ReadFloat();
+
+	Function FuncOnHit = data.ReadFunction();
+
+	float knockback = data.ReadFloat();
+
+	Handle swingTrace;
+	int target = npc.m_iTarget;
+	float vecTarget[3]; WorldSpaceCenter(target, vecTarget);
+
+	npc.FaceTowards(vecTarget, 20000.0);
+	if(npc.DoSwingTrace(swingTrace, target))
+	{
+		target = TR_GetEntityIndex(swingTrace);	
+		float vecHit[3];
+		TR_GetEndPosition(vecHit, swingTrace);
+		if(IsValidEnemy(npc.index, target))
+		{
+			if(target > 0) 
+			{
+				// Hit sound
+				//npc.PlayMeleeHitSound();
+				//static void OnHitSingle(int entity, int victim, float damage)
+				if(FuncOnHit && FuncOnHit != INVALID_FUNCTION)
+				{
+					Call_StartFunction(null, FuncOnHit);
+					Call_PushCell(entity);
+					Call_PushCell(target);
+					Call_PushFloat(damage);
+					Call_PushCell(PlaySound);
+					Call_Finish();
+				}
+				SDKHooks_TakeDamage(target, npc.index, npc.index, damage, DMG_CLUB, -1, _, vecHit);
+				if(IsValidClient(target))
+				{
+					//if(!silenced)
+					if(knockback)
+					{
+						TF2_AddCondition(target, TFCond_LostFooting, 0.5);
+						TF2_AddCondition(target, TFCond_AirCurrent, 0.5);
+					}
+				}
+				if(knockback)
+					Custom_Knockback(npc.index, target, knockback, true);
+			}
+			else
+			{
+				//npc.PlayMeleeMissSound();
+			}
+		}
+	}
+	delete swingTrace;
+	delete data;
 }
 
 //I am aware TE_SetupEffectDispatch exists, i only need it to spawn properly without any modifications.

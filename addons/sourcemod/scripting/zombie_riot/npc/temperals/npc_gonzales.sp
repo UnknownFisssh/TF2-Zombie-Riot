@@ -97,6 +97,11 @@ methodmap Pablo_Gonzales < CClotBody
 		public get()							{ return i_AttacksTillMegahit[this.index]; }
 		public set(int TempValueForProperty) 	{ i_AttacksTillMegahit[this.index] = TempValueForProperty; }
 	}
+	property int i_WeaponArg
+	{
+		public get()							{ return i_TimesSummoned[this.index]; }
+		public set(int TempValueForProperty) 	{ i_TimesSummoned[this.index] = TempValueForProperty; }
+	}
 	property float fl_Rage_Amount
 	{
 		public get()							{ return fl_NextRangedBarrage_Singular[this.index]; }
@@ -106,6 +111,16 @@ methodmap Pablo_Gonzales < CClotBody
 	{
 		public get()							{ return fl_NextRangedBarrage_Spam[this.index]; }
 		public set(float TempValueForProperty) 	{ fl_NextRangedBarrage_Spam[this.index] = TempValueForProperty; }
+	}
+	property float fl_Weapon_Timer
+	{
+		public get()							{ return fl_movedelay[this.index]; }
+		public set(float TempValueForProperty) 	{ fl_movedelay[this.index] = TempValueForProperty; }
+	}
+	property float fl_LaserGun_AboutToShoot
+	{
+		public get()							{ return fl_AbilityOrAttack[this.index][0]; }
+		public set(float TempValueForProperty) 	{ fl_AbilityOrAttack[this.index][0] = TempValueForProperty; }
 	}
 	public void PlayBackstabSfx(int target)
 	{
@@ -210,25 +225,94 @@ methodmap Pablo_Gonzales < CClotBody
 			RemoveEntity(this.m_iWearable6);
 		}
 	}
+	public bool DenyRageUsage()
+	{
+		if(this.i_WeaponArg == 1 || this.i_WeaponArg == 3 || this.i_WeaponArg == 4)
+			return true;
+		
+		return false;
+	}
+	public void GetAnimUsage(int usage)
+	{
+		bool off = false;
+		switch(usage)
+		{
+			case 0, 3:
+			{
+				this.AnimChanger(_, "ACT_MP_RUN_MELEE");
+			}
+			case 1://Amby Laser Taunt
+			{
+				this.AnimChanger(1, "taunt_the_punchline");
+				off = true;
+			}
+			case 2:
+			{
+				this.AnimChanger(_, "ACT_MP_RUN_SECONDARY");
+			}
+			case 4://Rage Taunt
+			{
+				off = true;
+			}
+		}
+		this.ClearanceHelp(off);
+	}
 	public void ChangeWeapons(int usage = 0)//DEFAULT IS MELEE
 	{
 		this.RemoveWeapon();
 		char weaponchar[255] = "";
+		float timer = 10.0;
 		switch(usage)
 		{
-			case 1:
+			case 1: {
 				weaponchar = "models/weapons/c_models/c_ambassador/c_ambassador.mdl";
-			case 2: 
+				timer = 6.35;
+				this.fl_LaserGun_AboutToShoot = GetGameTime(this.index) + (timer/2);
+				this.ArmorSet(0.5);
+			}
+			case 2: {
 				weaponchar = "models/weapons/c_models/c_letranger/c_letranger.mdl";
-			case 3: 
-				weaponchar = "";
-			default: 
+			}
+			case 3: {
+				timer = 7.0;
+				weaponchar = "models/workshop_partner/weapons/c_models/c_shogun_kunai/c_shogun_kunai.mdl";
+			}
+			case 4:{
+				timer = 6.0;
+			}
+			default: {
+				usage = 0;
+				timer = 0.0;
 				weaponchar = "models/weapons/c_models/c_voodoo_pin/c_voodoo_pin.mdl";
+				this.ArmorSet(1.0);
+			}
 		}
+		this.GetAnimUsage(usage);
+				
+		this.i_WeaponArg = usage;
+
+		if(timer != 0.0)
+			this.fl_Weapon_Timer = GetGameTime(this.index);
+		
 		if(weaponchar[0])
-			this.m_iWearable6 = npc.EquipItem("weapon_bone", weaponchar);
+			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
 	}
-	
+	public void ClearanceHelp(bool off = false)
+	{
+		if(!off)
+		{
+			ApplyStatusEffect(this.index, this.index, "Clear Head", FAR_FUTURE);	
+			ApplyStatusEffect(this.index, this.index, "Solid Stance", FAR_FUTURE);	
+			ApplyStatusEffect(this.index, this.index, "Fluid Movement", FAR_FUTURE);
+		}
+		else
+		{
+			RemoveSpecificBuff(this.index, "Clear Head");
+			RemoveSpecificBuff(this.index, "Solid Stance");
+			RemoveSpecificBuff(this.index, "Fluid Movement");
+		}
+	}
+
 	public Pablo_Gonzales(float vecPos[3], float vecAng[3], int ally, const char[] data)
 	{
 		Pablo_Gonzales npc = view_as<Pablo_Gonzales>(CClotBody(vecPos, vecAng, "models/player/heavy.mdl", "1.25", "30000", ally, false));
@@ -237,9 +321,7 @@ methodmap Pablo_Gonzales < CClotBody
 		
 		FormatEx(c_HeadPlaceAttachmentGibName[npc.index], sizeof(c_HeadPlaceAttachmentGibName[]), "head");
 		
-		int iActivity = npc.LookupActivity("ACT_MP_RUN_MELEE");
-		if(iActivity > 0) npc.StartActivity(iActivity);
-		npc.AnimChanger(_, "ACT_MP_RUN_MELEE");
+		npc.ChangeWeapons();
 
 		bool clone = StrContains(data, "clone") != -1;
 		npc.m_fbGunout = clone ? true : false;
@@ -255,18 +337,20 @@ methodmap Pablo_Gonzales < CClotBody
 		if(!clone)
 		{
 			RaidBossStatus Raid;
-			Raid.israid = true; //If raid true, If superboss false
+			Raid.israid = false; //If raid true, If superboss false
 			Raid.allow_builings = true;
 			Raid.Reduction_45 = 0.15;
 			Raid.Reduction_60 = 0.3;
 			Raid.Reduction_Last = 0.4;
 			Raid.RaidTime = 300.0;
+			Raid.ignore_scaling = !(StrContains(data, "Scaling") != -1);
 			
 			//If you want to check if there is already a raid, and want to add args for that !Raid.Setup(true, npc);
 			//viceversa
-			if(Raid.Setup(true, npc))//We are the raid!, if not use else or Check()
+			if(Raid.Setup(true, npc, data))//We are the raid!, if not use else or Check()
 			{
 				//add additional things
+				RaidModeScaling = 0.0;
 			}
 			//Normal npcs, if there is a raid going on and they managed to get spawned
 			//if(Raid.Check())//if there is a raid going lets this arg instead
@@ -321,6 +405,12 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	npc.m_flNextDelayTime = gameTime + DEFAULT_UPDATE_DELAY_FLOAT;
 	
 	npc.Update();
+
+	RaidBossStatus Raid;
+	if(!Raid.Check() && EntRefToEntIndex(RaidBossActive) != npc.index)
+	{
+		RaidBossActive = EntIndexToEntRef(npc.index);
+	}
 	
 	if(npc.m_blPlayHurtAnimation)
 	{
@@ -338,6 +428,29 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	if(npc.m_flNextThinkTime > gameTime)
 	{
 		return;
+	}
+	switch(npc.i_WeaponArg)
+	{
+		case 0:
+		{
+
+		}
+		case 4:
+		{
+			//Add all logic in here
+		}
+		default:
+		{
+			if(npc.fl_Weapon_Timer < gameTime)
+			{
+				npc.AnimChanger(_, "ACT_MP_RUN_MELEE");
+				npc.ChangeWeapons();
+			}
+		}
+	}
+	if(npc.i_WeaponArg != 0)
+	{
+
 	}
 	
 	npc.m_flNextThinkTime = gameTime + 0.1;
@@ -379,6 +492,25 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		{
 			npc.SetGoalEntity(closest);
 		}
+
+		if(npc.i_WeaponArg == 4)
+		{
+			float time = npc.fl_LaserGun_AboutToShoot - gameTime;
+			if(time == 99999.0)
+			return;
+			int color[4] = {40, 60, 255, 255};
+			if(time < 4.0)
+			{
+				color = {255, 40, 60, 255};
+				npc.fl_LaserGun_AboutToShoot = 99999.0;
+			}
+			else
+			{
+				
+			}
+			TE_Cube_Line_Visual(npc, _, vecTarget, VecSelfNpc, color);
+			return;
+		}
 		
 		//Target close enough to hit
 		Pablo_Gonzales_SelfDefense(npc, gameTime, npc.m_iTarget, flDistanceToTarget);
@@ -395,63 +527,15 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 
 static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int target, float flDistanceToTarget)
 {
-	if(npc.m_flAttackHappens)
-	{
-		if (npc.m_flAttackHappens < gameTime)
-		{
-			npc.m_flAttackHappens = 0.0;
-			Handle swingTrace;
-			float vecTarget[3]; WorldSpaceCenter(target, vecTarget);
-
-			npc.FaceTowards(vecTarget, 20000.0);
-			if(npc.DoSwingTrace(swingTrace, target))
-			{
-				target = TR_GetEntityIndex(swingTrace);	
-				float vecHit[3];
-				TR_GetEndPosition(vecHit, swingTrace);
-				if(IsValidEnemy(npc.index, target))
-				{
-					float damage = 13.0;
-					damage *= RaidModeScaling;
-
-					if(target > 0) 
-					{
-						// Hit sound
-						npc.PlayMeleeHitSound();
-						npc.i_Hit++;
-						if(npc.i_Hit >= 4)
-						{
-							float exp_damage = 800.0, radius = 160.0;
-							//exp_damage *= RaidModeScaling;
-							damage *= 1.3;
-							
-							float vicloc[3];
-							Custom_Knockback(npc.index, target, 1500.0);
-							WorldSpaceCenter(target, vicloc);
-							ParticleEffectAt(vicloc, "drg_cow_explosioncore_charged_blue", 0.5);
-							Explode_Logic_Custom(exp_damage, npc.index, npc.index, -1, _, radius, _, _, true);
-							npc.i_Hit = 0;
-						}
-						SDKHooks_TakeDamage(target, npc.index, npc.index, damage, DMG_CLUB | DMG_BURN, -1, _, vecHit);
-					}
-					else
-					{
-						npc.PlayMeleeMissSound();
-					}
-				}
-			}
-			delete swingTrace;
-		}
-	}
-	if(npc.m_flNextRangedSpecialAttack)
-	{
-		if(npc.m_flNextRangedSpecialAttack < gameTime)
-		{
-			npc.m_flNextRangedSpecialAttack = 0.0;
-			//Pablo_Gonzales_Hellfire_Attack(npc);
-		}
-		return;
-	}
+	//if(npc.m_flNextRangedSpecialAttack)
+	//{
+	//	if(npc.m_flNextRangedSpecialAttack < gameTime)
+	//	{
+	//		npc.m_flNextRangedSpecialAttack = 0.0;
+	//		//Pablo_Gonzales_Hellfire_Attack(npc);
+	//	}
+	//	return;
+	//}
 	
 	if(gameTime > npc.m_flNextMeleeAttack)
 	{
@@ -463,35 +547,40 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 			if(IsValidEnemy(npc.index, Enemy_I_See))
 			{
 				npc.m_iTarget = Enemy_I_See;
-
+				float damage = 750.0;
 				npc.PlayMeleeSound();
-				bool rng = view_as<bool>(GetRandomInt(0, 1));
-				npc.AddGesture(rng ? "ACT_MP_ATTACK_STAND_MELEE_ALLCLASS" : "ACT_MP_ATTACK_STAND_MELEE");
-				npc.m_flAttackHappens = gameTime + 0.3;
-				float attack = GetRandomFloat(0.6, 1.2);
-				npc.m_flNextMeleeAttack = gameTime + attack;
+				bool trick = view_as<bool>(npc.i_WeaponArg == 3);
+				npc.AddGesture(rng ? "ACT_MP_ATTACK_STAND_MELEE_SECONDARY" : "ACT_MP_ATTACK_STAND_MELEE");
+				npc.m_flNextMeleeAttack = gameTime + 0.6;
+				int frames = 11;
+				DataPack pack = new DataPack();
+				pack.WriteCell(EntIndexToEntRef(npc.index));
+				pack.WriteFloat(damage);
+				pack.WriteFunction(INVALID_FUNCTION);
+				pack.WriteFloat(trick ? 300.0 : 0.0);
+				RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
 			}
 		}
 	}
 
-	if(gameTime > npc.m_flNextRangedAttack)
-	{
-		if(flDistanceToTarget > (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25) && flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 10.0))
-		{
-			int Enemy_I_See;			
-			Enemy_I_See = Can_I_See_Enemy(npc.index, target);
-					
-			if(IsValidEnemy(npc.index, Enemy_I_See))
-			{
-				npc.m_iTarget = Enemy_I_See;
-				npc.PlayMeleeSound();
-				npc.AddGesture("ACT_MP_THROW");//ACT_MP_ATTACK_STAND_ITEM1
-						
-				npc.m_flNextRangedSpecialAttack = gameTime + 0.15;
-				npc.m_flNextRangedAttack = gameTime + 1.85;
-			}
-		}
-	}
+	//if(gameTime > npc.m_flNextRangedAttack)
+	//{
+	//	if(flDistanceToTarget > (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25) && flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 10.0))
+	//	{
+	//		int Enemy_I_See;			
+	//		Enemy_I_See = Can_I_See_Enemy(npc.index, target);
+	//				
+	//		if(IsValidEnemy(npc.index, Enemy_I_See))
+	//		{
+	//			npc.m_iTarget = Enemy_I_See;
+	//			npc.PlayMeleeSound();
+	//			npc.AddGesture("ACT_MP_THROW");//ACT_MP_ATTACK_STAND_ITEM1
+	//					
+	//			npc.m_flNextRangedSpecialAttack = gameTime + 0.15;
+	//			npc.m_flNextRangedAttack = gameTime + 1.85;
+	//		}
+	//	}
+	//}
 }
 
 static Action Pablo_Gonzales_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
@@ -519,7 +608,7 @@ static Action Pablo_Gonzales_OnTakeDamage(int victim, int &attacker, int &inflic
 			
 		}
 	}
-	if(npc.Rage_FullyCharged())
+	if(npc.Rage_FullyCharged() && !npc.DenyRageUsage())
 	{
 		npc.Rage();
 	}
@@ -550,7 +639,7 @@ static void Pablo_Gonzales_NPCDeath(int entity)
 	if(IsValidEntity(npc.m_iWearable5))
 		RemoveEntity(npc.m_iWearable5);
 
-	this.RemoveWeapon();
+	npc.RemoveWeapon();
 
 	npc.PlayDeathSound();
 	if(ZR_GetWaveCount()+1 > 45)
@@ -660,3 +749,51 @@ static void Pablo_Gonzales_Final_Messages(int line)
 	}
 	Pablo_Gonzales_Reply(text);
 }
+void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float VectorTarget[3], float VectorStart[3], int color[4] = {255, 255, 255, 255}, int size = 35, float hitrange = 35.0, float time = 0.05019608415)
+{
+	if(time <= 0.05019608415)
+	{
+		time = 0.05019608415;
+	}
+	float vecForward[3], Angles[3];
+
+	GetVectorAnglesTwoPoints(VectorStart, VectorTarget, Angles);
+
+	GetAngleVectors(Angles, vecForward, NULL_VECTOR, NULL_VECTOR);
+
+	float VectorTarget_2[3];
+	for(int i = 0 ; i <= 3 ; i++)
+		VectorTarget_2[i] = VectorStart[i] + vecForward[i] * VectorForward;
+
+	float diameter = float(size * 4);
+
+	for(int BeamCube = 0; BeamCube < 4 ; BeamCube++)
+	{
+		float OffsetFromMiddle[3];
+		switch(BeamCube)
+		{
+			case 0:
+				OffsetFromMiddle = {0.0, hitrange, hitrange};
+			case 1:
+				OffsetFromMiddle = {0.0, -hitrange, -hitrange};
+			case 2:
+				OffsetFromMiddle = {0.0, hitrange, -hitrange};
+			case 3:
+				OffsetFromMiddle = {0.0, -hitrange, hitrange};
+		}
+		float AnglesEdit[3], VectorStartEdit[3];
+		AnglesEdit = Angles;//EditTheSameLoop(AnglesEdit, Angles);
+		VectorStartEdit = VectorStart;//EditTheSameLoop(VectorStartEdit, VectorStart);
+
+		GetBeamDrawStartPoint_Stock(entity, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
+
+		TE_SetupBeamPoints(VectorStartEdit, VectorTarget_2, Shared_BEAM_Laser, 0, 0, 0, TimeUntillHit, ClampBeamWidth(diameter * 0.1), ClampBeamWidth(diameter * 0.1), 0, 0.0, color, 0);
+		TE_SendToAll(0.0);
+	}
+}
+
+//static void EditTheSameLoop(float[] endresult, float[] result, int loop = 3)
+//{
+//	for(int i = 0; i <= loop ; i++)
+//		endresult[i] = result[i];
+//}

@@ -1392,7 +1392,7 @@ static void TheGambler_SelfDefense_Melee(TheTemperalGambler npc, float gameTime,
 			pack.WriteFloat(damage);
 			pack.WriteFunction(func);
 			pack.WriteFloat(knockback);
-			RequestFrames((aoe ? TheGambler_AoEDamage_Melee : TheGambler_SingleDamage_Melee), frames, pack);
+			RequestFrames((aoe ? TheGambler_AoEDamage_Melee : Temperals_SingleDamage_Melee), frames, pack);
 		}
 	}
 }
@@ -1532,7 +1532,7 @@ static void TheGambler_OnTimeHitGains(int entity, int victim, float damage, bool
 		npc.fl_Money += 20.0;
 	}
 }
-
+/*
 void TheGambler_SingleDamage_Melee(DataPack data)
 {
 	data.Reset();
@@ -1583,11 +1583,13 @@ void TheGambler_SingleDamage_Melee(DataPack data)
 				if(IsValidClient(target))
 				{
 					//if(!silenced)
+					if(knockback)
 					{
 						TF2_AddCondition(target, TFCond_LostFooting, 0.5);
 						TF2_AddCondition(target, TFCond_AirCurrent, 0.5);
 					}
 				}
+				if(knockback)
 				Custom_Knockback(npc.index, target, knockback, true);
 			}
 			else
@@ -1598,7 +1600,7 @@ void TheGambler_SingleDamage_Melee(DataPack data)
 	}
 	delete swingTrace;
 	delete data;
-}
+}*/
 
 static void TheGambler_JawBreaker_OnHit(int entity, int victim, float damage, bool PlaySound)
 {
