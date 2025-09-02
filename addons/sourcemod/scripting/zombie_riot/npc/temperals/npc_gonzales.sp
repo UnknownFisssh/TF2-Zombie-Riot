@@ -255,7 +255,7 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void RemoveWeapon()
 	{
-		if(this.IsValidEntity(this.m_iWearable6))
+		if(IsValidEntity(this.m_iWearable6))
 		{
 			RemoveEntity(this.m_iWearable6);
 		}
@@ -394,7 +394,7 @@ methodmap Pablo_Gonzales < CClotBody
 				if(noscaling)
 					RaidModeScaling = 0.0;
 				
-				npc.m_iWearable5 = TF2_CreateGlow_White(npc.index, "models/player/spy.mdl", npc.index, 1.35);
+				npc.m_iWearable5 = TF2_CreateGlow_White("models/player/spy.mdl", npc.index, 1.35);
 				if(IsValidEntity(npc.m_iWearable5))
 				{
 					SetEntProp(npc.m_iWearable5, Prop_Send, "m_bGlowEnabled", false);
@@ -402,7 +402,7 @@ methodmap Pablo_Gonzales < CClotBody
 					//Cannot be used on the actual npc. Reason is, for whatever reason fire removes it.
 					Start_TE_Body_Effect(npc.m_iWearable5, "utaunt_heavyrain_parent");
 				}
-				CPrintToChat("{crimson}Difficulty {default}- {yellow}⁂");
+				CPrintToChatAll("{crimson}Difficulty {default}- {yellow}⁂");
 			}
 			//Normal npcs, if there is a raid going on and they managed to get spawned
 			//if(Raid.Check())//if there is a raid going lets this arg instead
@@ -570,7 +570,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			}
 			else
 			{
-				
+				npc.FaceTowards(vecTarget, 15000.0);
 			}
 			float radius = 1000.0;
 			TE_Cube_Line_Visual(npc, radius, vecTarget, VecSelfNpc, color);
@@ -587,7 +587,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 				float damage = 850.0;
 				float tempdmg = damage/3;
 				if(tempdmg < 1)
-					tempdmg = 1;
+					tempdmg = 1.0;
 				
 				for (int loop = 0; loop < sizeof(i_Ruina_Laser_BEAM_HitDetected); loop++)
 				{
@@ -890,18 +890,19 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 
 	for(int BeamCube = 0; BeamCube < 4 ; BeamCube++)
 	{
-		float OffsetFromMiddle[3];
+		float OffsetFromMiddle[3] = {0.0, 0.0, 0.0};
 		switch(BeamCube)
 		{
 			case 0:
-				OffsetFromMiddle = {0.0, hitrange, hitrange};
+				OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = hitrange;
 			case 1:
-				OffsetFromMiddle = {0.0, -hitrange, -hitrange};
+				OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = -hitrange;
 			case 2:
-				OffsetFromMiddle = {0.0, hitrange, -hitrange};
+				OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = -hitrange;
 			case 3:
-				OffsetFromMiddle = {0.0, -hitrange, hitrange};
+				OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = hitrange;
 		}
+		
 		float AnglesEdit[3], VectorStartEdit[3];
 		AnglesEdit = Angles;//EditTheSameLoop(AnglesEdit, Angles);
 		VectorStartEdit = VectorStart;//EditTheSameLoop(VectorStartEdit, VectorStart);
