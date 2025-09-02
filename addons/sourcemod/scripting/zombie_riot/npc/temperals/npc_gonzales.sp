@@ -604,6 +604,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 						IncreaseEntityDamageTakenBy(target, 0.35, GetRandomFloat(10.0, 20.0), true);
 						SDKHooks_TakeDamage(vic, npc.index, npc.index, tempdmg, DMG_PLASMA, -1, _, vecTarget);
 					}
+					i_LaserHits++;
 				}
 			}
 			return;
