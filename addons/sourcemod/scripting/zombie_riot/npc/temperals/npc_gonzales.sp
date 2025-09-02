@@ -91,8 +91,8 @@ methodmap Pablo_Gonzales < CClotBody
 {
 	property int i_Hit
 	{
-		public get()							{ return i_HitAmounts[this.index]; }
-		public set(int TempValueForProperty) 	{ i_HitAmounts[this.index] = TempValueForProperty; }
+		public get()							{ return i_OverlordComboAttack[this.index]; }
+		public set(int TempValueForProperty) 	{ i_OverlordComboAttack[this.index] = TempValueForProperty; }
 	}
 	property int i_Stabbed
 	{
@@ -186,7 +186,7 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void Rage()
 	{
-		float gameTime = GetGameTime(npc.index);
+		float gameTime = GetGameTime(this.index);
 		this.fl_Rage_Amount -= this.fl_Rage_Requirement;
 		float timer = this.fl_AbilityGain_Timer - gameTime;
 		if(timer < 4.0)
@@ -234,9 +234,9 @@ methodmap Pablo_Gonzales < CClotBody
 		{
 			if(anim[0])
 			{
-				int iActivity = npc.LookupActivity(anim);
+				int iActivity = this.LookupActivity(anim);
 				if(iActivity > 0) 
-					npc.StartActivity(iActivity);
+					this.StartActivity(iActivity);
 			}
 		}
 		else
@@ -601,7 +601,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 					}
 					else
 					{
-						IncreaseEntityDamageTakenBy(target, 0.35, GetRandomFloat(10.0, 20.0), true);
+						IncreaseEntityDamageTakenBy(vic, 0.35, GetRandomFloat(10.0, 20.0), true);
 						SDKHooks_TakeDamage(vic, npc.index, npc.index, tempdmg, DMG_PLASMA, -1, _, vecTarget);
 					}
 					i_LaserHits++;
@@ -763,14 +763,14 @@ static void Pablo_Gonzales_NPCDeath(int entity)
 	npc.RemoveWeapon();
 
 	npc.PlayDeathSound();
-	if(ZR_GetWaveCount()+1 > 45)
-	{
-		//Pablo_Gonzales_Death_Messages(GetRandomInt(0, 1));
-	}
-	else
-	{
-		//Pablo_Gonzales_Death_Messages(GetRandomInt(2, 3));
-	}
+	//if(Waves_GetRoundScale()+1 > 45)
+	//{
+	//	//Pablo_Gonzales_Death_Messages(GetRandomInt(0, 1));
+	//}
+	//else
+	//{
+	//	//Pablo_Gonzales_Death_Messages(GetRandomInt(2, 3));
+	//}
 
 	if(npc.index == EntRefToEntIndex(RaidBossActive))
 	{
@@ -908,7 +908,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 
 		GetBeamDrawStartPoint_Stock(npc.index, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
 
-		TE_SetupBeamPoints(VectorStartEdit, VectorTarget_2, Shared_BEAM_Laser, 0, 0, 0, TimeUntillHit, ClampBeamWidth(diameter * 0.1), ClampBeamWidth(diameter * 0.1), 0, 0.0, color, 0);
+		TE_SetupBeamPoints(VectorStartEdit, VectorTarget_2, Shared_BEAM_Laser, 0, 0, 0, time, ClampBeamWidth(diameter * 0.1), ClampBeamWidth(diameter * 0.1), 0, 0.0, color, 0);
 		TE_SendToAll(0.0);
 	}
 }
