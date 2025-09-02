@@ -271,8 +271,9 @@ methodmap Pablo_Gonzales < CClotBody
 			}
 			case 1://Amby Laser Taunt
 			{
-				this.AnimChanger(1, "taunt_the_punchline",_, _, false);
+				this.AnimChanger(1, "taunt_the_punchline", 0.75, _, false);
 				disable = true;
+				this.StopPathing();
 			}
 			case 2:
 			{
@@ -282,6 +283,7 @@ methodmap Pablo_Gonzales < CClotBody
 			{
 				this.AnimChanger(1, "taunt06", _, _, false);
 				disable = true;
+				this.StopPathing();
 			}
 		}
 		this.ClearanceHelp(disable);
@@ -291,6 +293,7 @@ methodmap Pablo_Gonzales < CClotBody
 		this.RemoveWeapon();
 		char weaponchar[255] = "";
 		float timer = 10.0;
+		PrintToChatAll("%i", usage);
 		switch(usage)
 		{
 			case 1: {
@@ -322,7 +325,7 @@ methodmap Pablo_Gonzales < CClotBody
 		this.i_WeaponArg = usage;
 
 		if(timer != 0.0)
-			this.fl_Weapon_Timer = GetGameTime(this.index);
+			this.fl_Weapon_Timer = GetGameTime(this.index) + timer;
 		
 		if(weaponchar[0])
 			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
@@ -383,7 +386,7 @@ methodmap Pablo_Gonzales < CClotBody
 			Raid.Reduction_45 = 0.15;
 			Raid.Reduction_60 = 0.3;
 			Raid.Reduction_Last = 0.4;
-			Raid.RaidTime = 300.0;
+			Raid.RaidTime = 99999.0;
 			Raid.ignore_scaling = noscaling;
 			
 			//If you want to check if there is already a raid, and want to add args for that !Raid.Setup(true, npc);
@@ -400,7 +403,7 @@ methodmap Pablo_Gonzales < CClotBody
 					SetEntProp(npc.m_iWearable5, Prop_Send, "m_bGlowEnabled", false);
 					SetEntityRenderMode(npc.m_iWearable5, RENDER_ENVIRONMENTAL);
 					//Cannot be used on the actual npc. Reason is, for whatever reason fire removes it.
-					Start_TE_Body_Effect(npc.m_iWearable5, "utaunt_heavyrain_parent");
+					Start_TE_Body_Effect(npc.m_iWearable5, "utaunt_cremation_purple_parent");
 				}
 				CPrintToChatAll("{crimson}Difficulty {default}- {yellow}⁂");
 			}
@@ -554,7 +557,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			npc.SetGoalEntity(closest);
 		}
 
-		if(npc.i_WeaponArg == 4)
+		if(npc.i_WeaponArg == 1)
 		{
 			float time = npc.fl_LaserGun_AboutToShoot - gameTime;
 			if(time >= 99999.0 || time < 3.35 && time > 3.0)
@@ -699,7 +702,7 @@ static void Pablo_OnHit_Trickstab(int entity, int victim, float damage)
 {
 	//Add trickstab buff attack speed in here.
 	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(entity);
-	npc.fl_Weapon_Timer = 0.0;
+	npc.fl_Weapon_Timer = GetGameTime(npc.index);
 	npc.fl_Trickstab_Buff = GetGameTime(npc.index) + 4.0;
 	npc.PlayMeleeHitSound();
 }
@@ -883,7 +886,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 	GetAngleVectors(Angles, vecForward, NULL_VECTOR, NULL_VECTOR);
 
 	float VectorTarget_2[3];
-	for(int i = 0 ; i <= 3 ; i++)
+	for(int i = 0 ; i <= 2 ; i++)
 		VectorTarget_2[i] = VectorStart[i] + vecForward[i] * VectorForward;
 
 	float diameter = float(size * 4);
