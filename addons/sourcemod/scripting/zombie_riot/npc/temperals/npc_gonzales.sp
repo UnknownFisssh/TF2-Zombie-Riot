@@ -584,18 +584,25 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 				Laser.DoForwardTrace_Custom(vecTarget, VecSelfNpc, radius);
 				Laser.Enumerate_Simple();
 
+				float damage = 850.0;
+				float tempdmg = damage/3;
+				if(tempdmg < 1)
+					tempdmg = 1;
+				
 				for (int loop = 0; loop < sizeof(i_Ruina_Laser_BEAM_HitDetected); loop++)
 				{
 					int vic = i_Ruina_Laser_BEAM_HitDetected[loop];
-					if(!vic)
+					if(!vic)//No more victims.
 						break;
+					
 					if(i_LaserHits <= 0)
 					{
-
+						SDKHooks_TakeDamage(vic, npc.index, npc.index, damage, DMG_PLASMA, -1, _, vecTarget);
 					}
 					else
 					{
-						
+						IncreaseEntityDamageTakenBy(target, 0.35, GetRandomFloat(10.0, 20.0), true);
+						SDKHooks_TakeDamage(vic, npc.index, npc.index, tempdmg, DMG_PLASMA, -1, _, vecTarget);
 					}
 				}
 			}
@@ -617,16 +624,6 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		npc.m_iTarget = GetClosestTarget(npc.index);
 	}
 	//npc.PlayIdleSound();
-}
-
-static void On_LaserHit(int client, int target, int damagetype, float damage)
-{
-	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(client);
-	if(i_LaserHits <= 0)
-	{
-
-	}
-	i_LaserHits++;
 }
 
 static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int target, float flDistanceToTarget)
