@@ -906,7 +906,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 		AnglesEdit = Angles;//EditTheSameLoop(AnglesEdit, Angles);
 		VectorStartEdit = VectorStart;//EditTheSameLoop(VectorStartEdit, VectorStart);
 
-		GetBeamDrawStartPoint_Stock(entity, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
+		GetBeamDrawStartPoint_Stock(npc.index, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
 
 		TE_SetupBeamPoints(VectorStartEdit, VectorTarget_2, Shared_BEAM_Laser, 0, 0, 0, TimeUntillHit, ClampBeamWidth(diameter * 0.1), ClampBeamWidth(diameter * 0.1), 0, 0.0, color, 0);
 		TE_SendToAll(0.0);
