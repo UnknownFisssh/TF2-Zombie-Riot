@@ -356,7 +356,7 @@ methodmap Pablo_Gonzales < CClotBody
 
 	public Pablo_Gonzales(float vecPos[3], float vecAng[3], int ally, const char[] data)
 	{
-		Pablo_Gonzales npc = view_as<Pablo_Gonzales>(CClotBody(vecPos, vecAng, "models/player/heavy.mdl", "1.25", "30000", ally, false));
+		Pablo_Gonzales npc = view_as<Pablo_Gonzales>(CClotBody(vecPos, vecAng, "models/player/spy.mdl", "1.25", "30000", ally, false));
 		
 		i_NpcWeight[npc.index] = 5;
 		
