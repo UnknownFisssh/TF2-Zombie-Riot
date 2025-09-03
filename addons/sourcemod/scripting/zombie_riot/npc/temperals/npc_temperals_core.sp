@@ -417,7 +417,16 @@ stock void Temperals_SingleDamage_Melee(DataPack data)
 	float vecTarget[3]; WorldSpaceCenter(target, vecTarget);
 
 	npc.FaceTowards(vecTarget, 20000.0);
-	if(npc.DoSwingTrace(swingTrace, target))
+	float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
+
+	data.ReadFloatArray(minVec, sizeof(minVec));
+	data.ReadFloatArray(maxVec, sizeof(maxVec));
+	if(IsNullVector(minVec))
+		minVec = {-64.0, -64.0, -128.0};
+	if(IsNullVector(maxVec))
+		maxVec = {64.0, 64.0, 128.0};
+
+	if(npc.DoSwingTrace(swingTrace, target, maxVec, minVec))
 	{
 		target = TR_GetEntityIndex(swingTrace);	
 		float vecHit[3];

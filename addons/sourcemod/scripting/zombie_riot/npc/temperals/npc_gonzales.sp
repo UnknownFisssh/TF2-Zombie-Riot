@@ -11,10 +11,6 @@
 //whoever had the ion strike gets the full damage, anyone else takes less by 55%.
 //Rage. upon activation pablo is doing the disco taunt and gains 50% resistance, doing repeated AoE effects.
 
-//Add "trickstab" knockbacks the victim and he gains an attack rate buff.
-
-static int i_LaserHits = 0;
-
 static char g_DeathSounds[][] = {
 	"npc/zombie/zombie_die1.wav",
 };
@@ -31,7 +27,7 @@ static char g_IdleAlertedSounds[][] = {
 	"npc/zombie/zombie_alert1.wav",
 };
 static char g_IntroSound[][] = {
-	"npc/zombie_poison/pz_call1.wav",
+	"vo/spy_revenge02.mp3",
 };
 
 static char g_MeleeHitSounds[][] = {
@@ -49,15 +45,39 @@ static char g_RageSound[][] = {
 };
 static char g_BackstabSounds[][] = {
 	"vo/spy_jaratehit03.mp3",
+	"vo/spy_dominationpyro02.mp3",
+	"vo/spy_dominationspy03.mp3",
+	"vo/spy_specialcompleted10.mp3",
+	"vo/taunts/spy/spy_taunts_head_doctor_you_suck.mp3"
 };
 static char g_BackstabSFX[][] = {
 	"player/spy_shield_break.wav",
 };
+static char g_WeaponAbilitySounds[][] = {
+	"vo/spy_dominationengineer06.mp3",
+	"vo/spy_dominationheavy01.mp3",
+};
+static char g_WeaponAbilitySFX[][] = {
+	"player/spy_shield_break.wav",
+	"vo/spy_dominationengineer06.mp3"
+};
+static char g_LaserAmby_Hit[][] = {
+	"vo/spy_dominationmedic04.mp3",
+	"vo/spy_dominationmedic06.mp3",
+	"vo/spy_dominationscout05.mp3",
+	"vo/spy_revenge01.mp3"
+};
+static char g_Trickstab_Hit[][] = {
+	"vo/spy_dominationsniper03.mp3",
+	"vo/spy_laughhappy03.mp3"
+};
 
+static int i_LaserHits = 0;
 static float fl_DefaultSpeed_Pablo_Gonzales = 300.0;
 
 public void Pablo_Gonzales_OnMapStart_NPC()
 {
+	i_LaserHits = 0;
 	PrecacheSoundArray(g_DeathSounds);
 	PrecacheSoundArray(g_HurtSounds);
 	PrecacheSoundArray(g_IdleSounds);
@@ -141,11 +161,12 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void PlayBackstabSfx(int target)
 	{
-		EmitSoundToAll(g_BackstabSounds[GetRandomInt(0, sizeof(g_BackstabSounds) - 1)], this.index, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
+		int rng = GetRandomInt(0, sizeof(g_BackstabSounds) - 1);
+		EmitSoundToAll(g_BackstabSounds[rng], this.index, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
 		EmitSoundToAll(g_BackstabSFX[GetRandomInt(0, sizeof(g_BackstabSFX) - 1)], this.index, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME, 90);
 		if(target <= MaxClients)
 		{
-			EmitSoundToClient(target, g_BackstabSounds[GetRandomInt(0, sizeof(g_BackstabSounds) - 1)], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
+			EmitSoundToClient(target, g_BackstabSounds[rng], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
 			EmitSoundToClient(target, g_BackstabSFX[GetRandomInt(0, sizeof(g_BackstabSFX) - 1)], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
 		}
 	}
@@ -262,7 +283,7 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void GetAnimUsage(int usage)
 	{
-		bool disable = false;
+		bool disable = true;
 		switch(usage)
 		{
 			case 0, 3:
@@ -272,7 +293,7 @@ methodmap Pablo_Gonzales < CClotBody
 			case 1://Amby Laser Taunt
 			{
 				this.AnimChanger(1, "taunt_the_punchline", 0.75, _, false);
-				disable = true;
+				disable = false;
 				this.StopPathing();
 			}
 			case 2:
@@ -282,7 +303,7 @@ methodmap Pablo_Gonzales < CClotBody
 			case 4://Rage Taunt
 			{
 				this.AnimChanger(1, "taunt06", _, _, false);
-				disable = true;
+				disable = false;
 				this.StopPathing();
 			}
 		}
@@ -299,8 +320,8 @@ methodmap Pablo_Gonzales < CClotBody
 			case 1: {
 				i_LaserHits = 0;
 				weaponchar = "models/weapons/c_models/c_ambassador/c_ambassador.mdl";
-				timer = 6.35;
-				this.fl_LaserGun_AboutToShoot = GetGameTime(this.index) + (timer/2);
+				timer = 5.33;
+				this.fl_LaserGun_AboutToShoot = GetGameTime(this.index) + 3.3;
 				this.ArmorSet(0.5);
 			}
 			case 2: {
@@ -330,7 +351,7 @@ methodmap Pablo_Gonzales < CClotBody
 		if(weaponchar[0])
 			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
 	}
-	public void ClearanceHelp(bool disable = false)
+	public void ClearanceHelp(bool disable = true)
 	{
 		if(!disable)
 		{
@@ -354,9 +375,17 @@ methodmap Pablo_Gonzales < CClotBody
 		this.fl_AbilityGain_Timer = GetGameTime(this.index) + 10.0;
 		this.i_Stabbed = 0;
 		this.m_flNextMeleeAttack = 0.0;
+		i_LaserHits = 0;
 		this.Rage_Requirement_Value();
 	}
-
+	public void ResetState()
+	{
+		this.AnimChanger(_, "ACT_MP_RUN_MELEE");
+		this.ChangeWeapons();
+		this.fl_Weapon_Timer = 0.0;
+		this.i_WeaponArg = 0;
+		this.fl_AbilityGain_Timer = GetGameTime(this.index) + 12.0;
+	}
 	public Pablo_Gonzales(float vecPos[3], float vecAng[3], int ally, const char[] data)
 	{
 		Pablo_Gonzales npc = view_as<Pablo_Gonzales>(CClotBody(vecPos, vecAng, "models/player/spy.mdl", "1.25", "30000", ally, false));
@@ -413,8 +442,11 @@ methodmap Pablo_Gonzales < CClotBody
 			//	the stuff
 			//}
 
-			Raid.PlayMusic("#zombiesurvival/temperals/special/gonzales_bgm.mp3", "Discussion -PANIC- Instrumental Mix Cover (Danganronpa)", "Vetrom", 215);
+			//Raid.PlayMusic("#zombiesurvival/temperals/special/gonzales_bgm.mp3", "Discussion -PANIC- Instrumental Mix Cover (Danganronpa)", "Vetrom", 215);
 		}
+
+		b_NoHealthbar[npc.index] = true;
+
 		int skin = 1;
 		SetEntProp(npc.index, Prop_Send, "m_nSkin", skin);
 
@@ -425,7 +457,6 @@ methodmap Pablo_Gonzales < CClotBody
 		npc.m_iWearable2 = npc.EquipItem("head", "models/player/items/all_class/all_class_oculus_spy_on.mdl", "", skin);
 		npc.m_iWearable3 = npc.EquipItem("head", "models/workshop/player/items/spy/spr17_the_upgrade/spr17_the_upgrade.mdl", "", skin);
 		npc.m_iWearable4 = npc.EquipItem("head", "models/workshop/player/items/scout/robo_all_mvm_canteen/robo_all_mvm_canteen.mdl", "", skin);
-		//IDLE
 		
 		func_NPCDeath[npc.index] = Pablo_Gonzales_NPCDeath;
 		func_NPCThink[npc.index] = Pablo_Gonzales_ClotThink;
@@ -490,7 +521,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			if(npc.fl_AbilityGain_Timer < gameTime)
 			{
 				int abilityRng = GetRandomInt(1, 3);
-				npc.ChangeWeapons(abilityRng);
+				npc.ChangeWeapons(1);
 			}
 		}
 		case 4:
@@ -509,10 +540,11 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		{
 			if(npc.fl_Weapon_Timer && npc.fl_Weapon_Timer < gameTime)
 			{
-				npc.AnimChanger(_, "ACT_MP_RUN_MELEE");
-				npc.ChangeWeapons();
-				npc.fl_Weapon_Timer = 0.0;
-				npc.fl_AbilityGain_Timer = gameTime + 12.0;
+				if((npc.i_WeaponArg == 1 || npc.i_WeaponArg == 5))
+				{
+					npc.m_flGetClosestTargetTime = 0.0;
+				}
+				npc.ResetState();
 			}
 		}
 	}
@@ -534,7 +566,12 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	{
 		npc.m_iTarget = GetClosestTarget(npc.index);
 		npc.m_flGetClosestTargetTime = gameTime + GetRandomRetargetTime();
-		npc.StartPathing();
+		if((npc.i_WeaponArg == 1 || npc.i_WeaponArg == 4 || npc.i_WeaponArg == 5))
+		{
+			npc.StopPathing();
+		}
+		else
+			npc.StartPathing();
 	}
 	
 	int closest = npc.m_iTarget;
@@ -565,28 +602,40 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 
 			int color[4] = {40, 60, 255, 255};
 			bool shoot = false;
-			if(time < 2.0)
+			static float vec_Previous[3];
+			static float vec_Previous_Self[3];
+			
+			if(time < 1.8)
 			{
 				color = {255, 40, 60, 255};
-				npc.fl_LaserGun_AboutToShoot = 999999.0;
-				shoot = true;
 			}
 			else
 			{
-				npc.FaceTowards(vecTarget, 15000.0);
+				vec_Previous = vecTarget;
+				vec_Previous[2] += 20.0;
+				vec_Previous_Self = VecSelfNpc;
+				vec_Previous_Self[2] += 20.0;
+				npc.FaceTowards(vec_Previous, 15000.0);
+			}
+			if(time <= 1.5)
+			{
+				npc.fl_LaserGun_AboutToShoot = 999999.0;
+				shoot = true;
 			}
 			float radius = 1000.0;
-			TE_Cube_Line_Visual(npc, radius, vecTarget, VecSelfNpc, color);
+			int hitradius = 55;
+			//Idk what i did but something broke the end point location lol. I don't mind it tbh as it looks nice, but even then odd
+			TE_Cube_Line_Visual(npc, radius, vec_Previous, vec_Previous_Self, color, hitradius, float(hitradius));
 			if(shoot)
 			{
 				Ruina_Laser_Logic Laser;
 				Laser.client = npc.index;
-				Laser.Start_Point = VecSelfNpc;
-				Laser.End_Point = vecTarget;
-				Laser.Radius = float(RoundFloat(radius / 28.5));
-				Laser.DoForwardTrace_Custom(vecTarget, VecSelfNpc, radius);
+				Laser.Start_Point = vec_Previous_Self;
+				Laser.End_Point = vec_Previous;
+				Laser.Radius = float(hitradius);
+				Laser.DoForwardTrace_Custom(vec_Previous_Self, vec_Previous, radius);
 				Laser.Enumerate_Simple();
-
+				
 				float damage = 850.0;
 				float tempdmg = damage/3;
 				if(tempdmg < 1)
@@ -609,6 +658,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 					}
 					i_LaserHits++;
 				}
+				npc.AnimChanger(_, "", 1.0, _, false);
 			}
 			return;
 		}
@@ -650,11 +700,14 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				float attackrate = trickstab_buff ? 0.27 : 0.65;
 				npc.m_flNextMeleeAttack = gameTime + attackrate;
 				int frames = 11;
+				float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
 				DataPack pack = new DataPack();
 				pack.WriteCell(EntIndexToEntRef(npc.index));
 				pack.WriteFloat(damage);
 				pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : Pablo_OnHit);
 				pack.WriteFloat(trick ? 300.0 : 0.0);
+				pack.WriteFloatArray(minVec, sizeof(minVec));
+				pack.WriteFloatArray(maxVec, sizeof(maxVec));
 				RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
 			}
 		}
@@ -674,7 +727,7 @@ static void Pablo_Gonzales_SelfDefense_Gun(Pablo_Gonzales npc, float gameTime, i
 
 	if(gameTime > npc.m_flNextRangedAttack)
 	{
-		if(flDistanceToTarget > (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25) && flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 10.0))
+		//if(flDistanceToTarget > (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 1.25) && flDistanceToTarget < (NORMAL_ENEMY_MELEE_RANGE_FLOAT_SQUARED * 10.0))
 		{
 			int Enemy_I_See;			
 			Enemy_I_See = Can_I_See_Enemy(npc.index, target);
@@ -683,10 +736,10 @@ static void Pablo_Gonzales_SelfDefense_Gun(Pablo_Gonzales npc, float gameTime, i
 			{
 				npc.m_iTarget = Enemy_I_See;
 				npc.PlayMeleeSound();
-				npc.AddGesture("ACT_MP_THROW");//ACT_MP_ATTACK_STAND_ITEM1
+				npc.AddGesture("ACT_MP_ATTACK_STAND_SECONDARY");//ACT_MP_ATTACK_STAND_ITEM1
 						
-				npc.m_flNextRangedSpecialAttack = gameTime + 0.15;
-				npc.m_flNextRangedAttack = gameTime + 1.85;
+				npc.m_flNextRangedSpecialAttack = gameTime + 0.1;
+				npc.m_flNextRangedAttack = gameTime + 0.2;
 			}
 		}
 	}
@@ -697,6 +750,15 @@ static void Pablo_OnHit(int entity, int victim, float damage)
 	//Add trickstab buff attack speed in here.
 	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(entity);
 	npc.PlayMeleeHitSound();
+	float gameTime = GetGameTime(npc.index);
+	if(npc.i_WeaponArg != 0)
+	{
+		return;
+	}
+	if(npc.fl_AbilityGain_Timer > gameTime)
+	{
+		npc.fl_AbilityGain_Timer -= 0.25;
+	}
 }
 static void Pablo_OnHit_Trickstab(int entity, int victim, float damage)
 {
@@ -721,7 +783,7 @@ static Action Pablo_Gonzales_OnTakeDamage(int victim, int &attacker, int &inflic
 		npc.PlayBackstabSfx(attacker);
 		if(npc.i_Stabbed >= 3)
 		{
-			Pablo_Gonzales_Backstab_Messages(attacker);
+			//Pablo_Gonzales_Backstab_Messages(attacker);
 			float dmg = 200.0, radius = 160.0;
 			//dmg *= RaidModeScaling;
 			Explode_Logic_Custom(dmg, npc.index, npc.index, -1, _, radius, _, _, true);
@@ -825,6 +887,7 @@ static void Pablo_Gonzales_Lastman_Messages(Pablo_Gonzales npc)
 
 	Pablo_Gonzales_Reply(text);
 }
+/*
 static void Pablo_Gonzales_Backstab_Messages(int stabber)
 {
 	char text[255];
@@ -872,7 +935,8 @@ static void Pablo_Gonzales_Final_Messages(int line)
 		}
 	}
 	Pablo_Gonzales_Reply(text);
-}
+}*/
+
 void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float VectorTarget[3], float VectorStart[3], int color[4] = {255, 255, 255, 255}, int size = 35, float hitrange = 35.0, float time = 0.05019608415)
 {
 	if(time <= 0.05019608415)
@@ -897,18 +961,18 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 		switch(BeamCube)
 		{
 			case 0:
-				OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = hitrange;
+				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = hitrange;
 			case 1:
-				OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = -hitrange;
+				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = -hitrange;
 			case 2:
-				OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = -hitrange;
+				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = -hitrange;
 			case 3:
-				OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = hitrange;
+				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = hitrange;
 		}
 		
 		float AnglesEdit[3], VectorStartEdit[3];
-		AnglesEdit = Angles;//EditTheSameLoop(AnglesEdit, Angles);
-		VectorStartEdit = VectorStart;//EditTheSameLoop(VectorStartEdit, VectorStart);
+		AnglesEdit = Angles;
+		VectorStartEdit = VectorStart;
 
 		GetBeamDrawStartPoint_Stock(npc.index, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
 
