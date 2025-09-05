@@ -997,6 +997,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 	GetAngleVectors(Angles, vecForward, NULL_VECTOR, NULL_VECTOR);
 
 	float VectorTarget_2[3];
+	
 	for(int i = 0 ; i <= 2 ; i++)
 		VectorTarget_2[i] = VectorStart[i] + vecForward[i] * VectorForward;
 
@@ -1008,7 +1009,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 		switch(BeamCube)
 		{
 			case 0:
-				OffsetFromMiddle = {0.0, view_as<float>(hitrange), view_as<float>(hitrange)}
+				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = hitrange;
 			case 1:
 				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = -hitrange;
 			case 2:
@@ -1022,7 +1023,6 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 		VectorStartEdit = VectorStart;
 
 		GetBeamDrawStartPoint_Stock(npc.index, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
-		//GetBeamDrawStartPoint_Stock(npc.index, VectorTarget_2, OffsetFromMiddle, AnglesEdit);
 
 		TE_SetupBeamPoints(VectorStartEdit, VectorTarget_2, Shared_BEAM_Laser, 0, 0, 0, time, ClampBeamWidth(diameter * 0.1), ClampBeamWidth(diameter * 0.1), 0, 0.0, color, 0);
 		TE_SendToAll(0.0);
