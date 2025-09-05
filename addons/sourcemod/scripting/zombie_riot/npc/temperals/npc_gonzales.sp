@@ -455,7 +455,7 @@ methodmap Pablo_Gonzales < CClotBody
 		this.ChangeWeapons();
 		this.fl_Weapon_Timer = 0.0;
 		this.i_WeaponArg = 0;
-		this.fl_AbilityGain_Timer = GetGameTime(this.index) + 12.0;
+		this.fl_AbilityGain_Timer = GetGameTime(this.index) + time;
 	}
 	public Pablo_Gonzales(float vecPos[3], float vecAng[3], int ally, const char[] data)
 	{
@@ -517,12 +517,11 @@ methodmap Pablo_Gonzales < CClotBody
 			//{
 			//	the stuff
 			//}
-
+			if(noscaling)
+				b_NoHealthbar[npc.index] = true;
 			//Raid.PlayMusic("#zombiesurvival/temperals/special/gonzales_bgm.mp3", "Discussion -PANIC- Instrumental Mix Cover (Danganronpa)", "Vetrom", 215);
 		}
-
-		b_NoHealthbar[npc.index] = true;
-
+		
 		int skin = 1;
 		SetEntProp(npc.index, Prop_Send, "m_nSkin", skin);
 
@@ -681,7 +680,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 				Laser.DoForwardTrace_Custom(vec_Previous_Self, vec_Previous, radius);
 				Laser.Enumerate_Simple();
 				
-				float damage = 850.0;
+				float damage = b_noscale ? 850.0 : (13.0 * RaidModeScaling);
 				float tempdmg = damage/3;
 				if(tempdmg < 1)
 					tempdmg = 1.0;
@@ -738,7 +737,7 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 			{
 				bool trickstab_buff = (npc.fl_Trickstab_Buff > gameTime);
 				npc.m_iTarget = Enemy_I_See;
-				float damage = 750.0;
+				float damage = b_noscale ? 750.0 : (14.0 * RaidModeScaling);
 				npc.PlayMeleeSound();
 				bool trick = view_as<bool>(npc.i_WeaponArg == 3);
 				npc.AddGesture(trick ? "ACT_MP_ATTACK_STAND_MELEE_SECONDARY" : "ACT_MP_ATTACK_STAND_MELEE");
