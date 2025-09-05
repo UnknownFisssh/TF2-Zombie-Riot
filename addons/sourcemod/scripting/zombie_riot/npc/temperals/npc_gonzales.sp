@@ -754,7 +754,7 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				Melee.minVec = minVec;
 				Melee.maxVec = maxVec;
 				Melee.frames = frames;
-				Melee.aoeRaid = false;
+				Melee.aoeRaid = b_thisNpcIsARaid[npc.index];
 				Melee.Initialize();
 			}
 		}
