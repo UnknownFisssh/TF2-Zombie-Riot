@@ -392,6 +392,35 @@ stock bool Temperlas_MultiLifeCheck(CClotBody npc, float damage, bool cantdie)
 	return false;
 }
 
+enum struct Npc_SingleTarget_MeleeAttack
+{
+	int index;
+	float damage;
+	Function func;
+	float knockback;
+	float minVec[3];
+	float maxVec[3];
+	int frames;
+	void Initialize()
+	{
+		DataPack pack = new DataPack();
+		pack.WriteCell(EntIndexToEntRef(this.index));
+		pack.WriteFloat(this.damage);
+		pack.WriteFunction((this.func && this.func != INVALID_FUNCTION) ? this.func : INVALID_FUNCTION);
+		pack.WriteFloat(this.knockback);
+		pack.WriteFloatArray(this.minVec, sizeof(this.minVec));
+		pack.WriteFloatArray(this.maxVec, sizeof(this.maxVec));
+		if(this.frames <= 0)
+		{
+			Temperals_SingleDamage_Melee(pack);
+		}
+		else
+		{
+			RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
+		}
+	}
+}
+
 stock void Temperals_SingleDamage_Melee(DataPack data)
 {
 	data.Reset();

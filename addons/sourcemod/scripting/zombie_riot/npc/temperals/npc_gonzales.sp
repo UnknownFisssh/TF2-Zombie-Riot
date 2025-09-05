@@ -351,6 +351,46 @@ methodmap Pablo_Gonzales < CClotBody
 		if(weaponchar[0])
 			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
 	}
+	public bool AbilityUsages()
+	{//This became a bool, incase you wanna just do return in the code end
+		bool returntime = (this.fl_Weapon_Timer < gameTime);
+		switch(this.i_WeaponArg)
+		{
+			case 0:
+			{
+				if(this.fl_AbilityGain_Timer < gameTime)
+				{
+					int abilityRng = GetRandomInt(1, 3);
+					this.ChangeWeapons(1);
+				}
+			}
+			case 4:
+			{
+				//Add all logic in here
+				if(returntime)
+				{
+					this.m_flGetClosestTargetTime = 0.0;
+					this.ResetState();
+				}
+				else
+				{
+					return true;
+				}
+			}
+			default:
+			{
+				if(/*this.fl_Weapon_Timer && */returntime)
+				{
+					if(this.i_WeaponArg == 1)
+					{
+						this.m_flGetClosestTargetTime = 0.0;
+					}
+					this.ResetState();
+				}
+			}
+		}
+		return false;
+	}
 	public void ClearanceHelp(bool disable = true)
 	{
 		if(!disable)
@@ -486,6 +526,15 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	
 	npc.Update();
 
+	if(LastMann)
+	{
+		if(!npc.m_fbGunout)
+		{
+			npc.m_fbGunout = true;
+			Pablo_Gonzales_Lastman_Messages(npc);
+		}
+	}
+
 	RaidBossStatus Raid;
 	if(!Raid.Check() && EntRefToEntIndex(RaidBossActive) != npc.index)
 	{
@@ -499,7 +548,13 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			npc.AddGesture("ACT_MP_GESTURE_FLINCH_CHEST", false);
 		npc.PlayHurtSound();
 	}
-	npc.Anger = !npc.Anger;//Passively angry!, cause he sucks ingame.
+	
+	if(npc.m_flNextThinkTime > gameTime)
+	{
+		return;
+	}
+
+	npc.Anger = !npc.Anger;//Passively angry! cause he sucks ingame.
 	if(!npc.Anger)
 	{
 		npc.m_flSpeed = (fl_DefaultSpeed_Pablo_Gonzales * 1.07);
@@ -508,57 +563,13 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	{
 		npc.m_flSpeed = fl_DefaultSpeed_Pablo_Gonzales;
 	}
-	
-	if(npc.m_flNextThinkTime > gameTime)
+
+	if(npc.AbilityUsages())
 	{
 		return;
 	}
-
-	switch(npc.i_WeaponArg)
-	{
-		case 0:
-		{
-			if(npc.fl_AbilityGain_Timer < gameTime)
-			{
-				int abilityRng = GetRandomInt(1, 3);
-				npc.ChangeWeapons(1);
-			}
-		}
-		case 4:
-		{
-			//Add all logic in here
-			if(npc.fl_Weapon_Timer < gameTime)
-			{
-				npc.i_WeaponArg = 5;
-			}
-			else
-			{
-				
-			}
-		}
-		default:
-		{
-			if(npc.fl_Weapon_Timer && npc.fl_Weapon_Timer < gameTime)
-			{
-				if((npc.i_WeaponArg == 1 || npc.i_WeaponArg == 5))
-				{
-					npc.m_flGetClosestTargetTime = 0.0;
-				}
-				npc.ResetState();
-			}
-		}
-	}
 	
 	npc.m_flNextThinkTime = gameTime + 0.1;
-
-	if(LastMann)
-	{
-		if(!npc.m_fbGunout)
-		{
-			npc.m_fbGunout = true;
-			Pablo_Gonzales_Lastman_Messages(npc);
-		}
-	}
 
 	//bool silence = NpcStats_IsEnemySilenced(npc.index);
 
@@ -566,10 +577,8 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	{
 		npc.m_iTarget = GetClosestTarget(npc.index);
 		npc.m_flGetClosestTargetTime = gameTime + GetRandomRetargetTime();
-		if((npc.i_WeaponArg == 1 || npc.i_WeaponArg == 4 || npc.i_WeaponArg == 5))
-		{
+		if((npc.i_WeaponArg == 1 || npc.i_WeaponArg == 4))//DENY THIS ENTIRELY.
 			npc.StopPathing();
-		}
 		else
 			npc.StartPathing();
 	}
@@ -625,7 +634,8 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			float radius = 1000.0;
 			int hitradius = 55;
 			//Idk what i did but something broke the end point location lol. I don't mind it tbh as it looks nice, but even then odd
-			TE_Cube_Line_Visual(npc, radius, vec_Previous, vec_Previous_Self, color, hitradius, float(hitradius));
+			//TE_Cube_Line_Visual(npc, radius, vec_Previous, vec_Previous_Self, color, hitradius, float(hitradius));
+			TE_Cube_Line_Visual(npc, radius, vec_Previous_Self, vec_Previous, color, hitradius, float(hitradius));//Made it the line being short on his end instead of where the enemy is.
 			if(shoot)
 			{
 				Ruina_Laser_Logic Laser;
@@ -699,16 +709,25 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				npc.AddGesture(trick ? "ACT_MP_ATTACK_STAND_MELEE_SECONDARY" : "ACT_MP_ATTACK_STAND_MELEE");
 				float attackrate = trickstab_buff ? 0.27 : 0.65;
 				npc.m_flNextMeleeAttack = gameTime + attackrate;
-				int frames = 11;
 				float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
-				DataPack pack = new DataPack();
-				pack.WriteCell(EntIndexToEntRef(npc.index));
-				pack.WriteFloat(damage);
-				pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : Pablo_OnHit);
-				pack.WriteFloat(trick ? 300.0 : 0.0);
-				pack.WriteFloatArray(minVec, sizeof(minVec));
-				pack.WriteFloatArray(maxVec, sizeof(maxVec));
-				RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
+				int frames = 11;
+				//DataPack pack = new DataPack();
+				//pack.WriteCell(EntIndexToEntRef(npc.index));
+				//pack.WriteFloat(damage);
+				//pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : Pablo_OnHit);
+				//pack.WriteFloat(trick ? 300.0 : 0.0);
+				//pack.WriteFloatArray(minVec, sizeof(minVec));
+				//pack.WriteFloatArray(maxVec, sizeof(maxVec));
+				//RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
+				Npc_SingleTarget_MeleeAttack Melee;
+				Melee.index = npc.index;
+				Melee.damage = damage;
+				Melee.func = trick ? Pablo_OnHit_Trickstab : Pablo_OnHit;
+				Melee.knockback = trick ? 300.0 : 0.0;
+				Melee.minVec = minVec;
+				Melee.maxVec = maxVec;
+				Melee.frames = frames;
+				Melee.Initialize();
 			}
 		}
 	}
