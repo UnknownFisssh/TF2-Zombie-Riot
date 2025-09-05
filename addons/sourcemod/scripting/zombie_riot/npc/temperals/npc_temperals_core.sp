@@ -392,7 +392,7 @@ stock bool Temperlas_MultiLifeCheck(CClotBody npc, float damage, bool cantdie)
 	return false;
 }
 
-enum struct Npc_SingleTarget_MeleeAttack
+enum struct Npc_MeleeAttack_Temperals
 {
 	int index;
 	float damage;
@@ -401,6 +401,7 @@ enum struct Npc_SingleTarget_MeleeAttack
 	float minVec[3];
 	float maxVec[3];
 	int frames;
+	bool aoeRaid;
 	void Initialize()
 	{
 		DataPack pack = new DataPack();
@@ -410,15 +411,130 @@ enum struct Npc_SingleTarget_MeleeAttack
 		pack.WriteFloat(this.knockback);
 		pack.WriteFloatArray(this.minVec, sizeof(this.minVec));
 		pack.WriteFloatArray(this.maxVec, sizeof(this.maxVec));
-		if(this.frames <= 0)
+		if(this.aoeRaid)
 		{
-			Temperals_SingleDamage_Melee(pack);
+			if(this.frames <= 0)
+			{
+				Temperals_AoEDamage_Melee(pack);
+			}
+			else
+			{
+				RequestFrames(Temperals_AoEDamage_Melee, this.frames, pack);
+			}
 		}
 		else
 		{
-			RequestFrames(Temperals_SingleDamage_Melee, this.frames, pack);
+			if(this.frames <= 0)
+			{
+				Temperals_SingleDamage_Melee(pack);
+			}
+			else
+			{
+				RequestFrames(Temperals_SingleDamage_Melee, this.frames, pack);
+			}
+		}
+		
+	}
+}
+
+stock void Temperals_AoEDamage_Melee(DataPack data)
+{
+	data.Reset();
+
+	int entity = EntRefToEntIndex(data.ReadCell());
+
+	if(!IsValidEntity(entity))
+	{
+		delete data;
+		return;
+	}
+
+	CClotBody npc = view_as<CClotBody>(entity);
+
+	float damage = data.ReadFloat();
+
+	Function FuncOnHit = data.ReadFunction();
+
+	float knockback = data.ReadFloat();
+
+	float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
+
+	data.ReadFloatArray(minVec, sizeof(minVec));
+	data.ReadFloatArray(maxVec, sizeof(maxVec));
+	if(IsNullVector(minVec))
+		minVec = {-64.0, -64.0, -128.0};
+	if(IsNullVector(maxVec))
+		maxVec = {64.0, 64.0, 128.0};
+
+	int target = npc.m_iTarget;
+
+	if(IsValidEnemy(npc.index, target))
+	{
+		int HowManyEnemeisAoeMelee = 64;
+		Handle swingTrace;
+
+		float VecEnemy[3]; WorldSpaceCenter(npc.m_iTarget, VecEnemy);
+		npc.FaceTowards(VecEnemy, 15000.0);
+		npc.DoSwingTrace(swingTrace, npc.m_iTarget, maxVec, minVec, _, 1, _, HowManyEnemeisAoeMelee);
+		delete swingTrace;
+		bool PlaySound = false;
+		bool silenced = NpcStats_IsEnemySilenced(npc.index);
+		for(int counter = 1; counter <= HowManyEnemeisAoeMelee; counter++)
+		{
+			if(i_EntitiesHitAoeSwing_NpcSwing[counter] > 0)
+			{
+				if(IsValidEntity(i_EntitiesHitAoeSwing_NpcSwing[counter]))
+				{
+					int targetTrace = i_EntitiesHitAoeSwing_NpcSwing[counter];
+					float vecHit[3];
+					
+					WorldSpaceCenter(targetTrace, vecHit);
+
+					if(damage <= 1.0)
+					{
+						damage = 1.0;
+					}
+					
+					// On Hit stuff
+					//static void OnHitAoe(int entity, int victim, float damage, bool Once)
+					if(FuncOnHit && FuncOnHit != INVALID_FUNCTION)
+					{
+						Call_StartFunction(null, FuncOnHit);
+						Call_PushCell(entity);
+						Call_PushCell(targetTrace);
+						Call_PushFloat(damage);
+						Call_PushCell(PlaySound);
+						Call_Finish();
+					}
+
+					SDKHooks_TakeDamage(targetTrace, npc.index, npc.index, damage, DMG_CLUB, -1, _, vecHit);
+					//Reduce damage after dealing
+					damage *= 0.92;
+					if(!PlaySound)
+					{
+						PlaySound = true;
+					}
+
+					if(IsValidClient(targetTrace))
+					{
+						if(knockback)
+						{
+							TF2_AddCondition(targetTrace, TFCond_LostFooting, 0.5);
+							TF2_AddCondition(targetTrace, TFCond_AirCurrent, 0.5);
+						}
+					}
+					if(knockback)
+						Custom_Knockback(npc.index, targetTrace, knockback, true);
+				} 
+			}
+		}
+		if(PlaySound)
+		{
+			//npc.PlayMeleeHitSound();
 		}
 	}
+
+	delete data;
 }
 
 stock void Temperals_SingleDamage_Melee(DataPack data)

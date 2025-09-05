@@ -1388,14 +1388,24 @@ static void TheGambler_SelfDefense_Melee(TheTemperalGambler npc, float gameTime,
 			//}
 			int frames = 12;
 			float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
-			DataPack pack = new DataPack();
-			pack.WriteCell(EntIndexToEntRef(npc.index));
-			pack.WriteFloat(damage);
-			pack.WriteFunction(func);
-			pack.WriteFloat(knockback);
-			pack.WriteFloatArray(minVec, sizeof(minVec));
-			pack.WriteFloatArray(maxVec, sizeof(maxVec));
-			RequestFrames((aoe ? TheGambler_AoEDamage_Melee : Temperals_SingleDamage_Melee), frames, pack);
+			//DataPack pack = new DataPack();
+			//pack.WriteCell(EntIndexToEntRef(npc.index));
+			//pack.WriteFloat(damage);
+			//pack.WriteFunction(func);
+			//pack.WriteFloat(knockback);
+			//pack.WriteFloatArray(minVec, sizeof(minVec));
+			//pack.WriteFloatArray(maxVec, sizeof(maxVec));
+			//RequestFrames((aoe ? TheGambler_AoEDamage_Melee : Temperals_SingleDamage_Melee), frames, pack);
+			Npc_MeleeAttack_Temperals Melee;
+			Melee.index = npc.index;
+			Melee.damage = damage;
+			Melee.func = func;
+			Melee.knockback = knockback;
+			Melee.minVec = minVec;
+			Melee.maxVec = maxVec;
+			Melee.frames = frames;
+			Melee.aoeRaid = aoe;
+			Melee.Initialize();
 		}
 	}
 }
@@ -1438,106 +1448,6 @@ static float TheGambler_MeleeDamage_Tier(TheTemperalGambler npc)
 	return damage;
 }
 
-void TheGambler_AoEDamage_Melee(DataPack data)
-{
-	data.Reset();
-
-	int entity = EntRefToEntIndex(data.ReadCell());
-
-	if(!IsValidEntity(entity))
-	{
-		delete data;
-		return;
-	}
-
-	CClotBody npc = view_as<CClotBody>(entity);
-
-	float damage = data.ReadFloat();
-
-	Function FuncOnHit = data.ReadFunction();
-
-	float knockback = data.ReadFloat();
-
-	float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
-
-	data.ReadFloatArray(minVec, sizeof(minVec));
-	data.ReadFloatArray(maxVec, sizeof(maxVec));
-	if(IsNullVector(minVec))
-		minVec = {-64.0, -64.0, -128.0};
-	if(IsNullVector(maxVec))
-		maxVec = {64.0, 64.0, 128.0};
-
-	int target = npc.m_iTarget;
-
-	if(IsValidEnemy(npc.index, target))
-	{
-		int HowManyEnemeisAoeMelee = 64;
-		Handle swingTrace;
-
-		float VecEnemy[3]; WorldSpaceCenter(npc.m_iTarget, VecEnemy);
-		npc.FaceTowards(VecEnemy, 15000.0);
-		npc.DoSwingTrace(swingTrace, npc.m_iTarget, maxVec, minVec, _, 1, _, HowManyEnemeisAoeMelee);
-		delete swingTrace;
-		bool PlaySound = false;
-		bool silenced = NpcStats_IsEnemySilenced(npc.index);
-		for(int counter = 1; counter <= HowManyEnemeisAoeMelee; counter++)
-		{
-			if(i_EntitiesHitAoeSwing_NpcSwing[counter] > 0)
-			{
-				if(IsValidEntity(i_EntitiesHitAoeSwing_NpcSwing[counter]))
-				{
-					int targetTrace = i_EntitiesHitAoeSwing_NpcSwing[counter];
-					float vecHit[3];
-					
-					WorldSpaceCenter(targetTrace, vecHit);
-
-					if(damage <= 1.0)
-					{
-						damage = 1.0;
-					}
-					
-					// On Hit stuff
-					//static void OnHitAoe(int entity, int victim, float damage, bool Once)
-					bool Knocked = false;
-					if(FuncOnHit && FuncOnHit != INVALID_FUNCTION)
-					{
-						Call_StartFunction(null, FuncOnHit);
-						Call_PushCell(entity);
-						Call_PushCell(targetTrace);
-						Call_PushFloat(damage);
-						Call_PushCell(PlaySound);
-						Call_Finish();
-					}
-
-					SDKHooks_TakeDamage(targetTrace, npc.index, npc.index, damage, DMG_CLUB, -1, _, vecHit);
-					//Reduce damage after dealing
-					damage *= 0.92;
-					if(!PlaySound)
-					{
-						PlaySound = true;
-					}
-
-					if(IsValidClient(targetTrace))
-					{
-						if(knockback)
-						{
-							TF2_AddCondition(targetTrace, TFCond_LostFooting, 0.5);
-							TF2_AddCondition(targetTrace, TFCond_AirCurrent, 0.5);
-						}
-					}
-					if(knockback)
-						Custom_Knockback(npc.index, targetTrace, knockback, true);
-				} 
-			}
-		}
-		if(PlaySound)
-		{
-			//npc.PlayMeleeHitSound();
-		}
-	}
-
-	delete data;
-}
 static void TheGambler_OnTimeHitGains(int entity, int victim, float damage, bool PlaySound)
 {
 	TheGambler npc = view_as<TheGambler>(entity);

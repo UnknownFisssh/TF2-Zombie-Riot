@@ -746,7 +746,7 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
 				int frames = 11;
 				
-				Npc_SingleTarget_MeleeAttack Melee;
+				Npc_MeleeAttack_Temperals Melee;
 				Melee.index = npc.index;
 				Melee.damage = damage;
 				Melee.func = trick ? Pablo_OnHit_Trickstab : Pablo_OnHit;
@@ -754,6 +754,7 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				Melee.minVec = minVec;
 				Melee.maxVec = maxVec;
 				Melee.frames = frames;
+				Melee.aoeRaid = false;
 				Melee.Initialize();
 			}
 		}
