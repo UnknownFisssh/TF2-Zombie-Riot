@@ -1,15 +1,21 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-//BASE OFF IT RN
-//Pablo will get an RNG weapon system 
-//upon getting the Amby, he will do the new guntaunt after that he fully shoots a big laser like attack
-//anything that hits it gets debuffed for 10-20s, the first victim however gets damaged.
-//Le Etrangle shoots fast deals weak damage last bullet is a aoe attack.
+//i honestly think i made him fucking complex for no reason code wise.
+
+//Pablo will get an RNG weapon system - DONE
+//upon getting the Amby, he will do the new guntaunt after that he fully shoots a big laser like attack - DONE needs sound
+//anything that hits it gets debuffed for 10-20s, the first victim however gets damaged. - DONE needs Sounds
+//Le Etrangle shoots fast deals weak damage last bullet is a aoe attack.- Still in the works.
+
+//Rage. upon activation pablo is doing the disco taunt and gains 50% resistance, doing repeated AoE effects.
+//- Still in the works.
+
+//Give this to the raid version whenever. this is too much for a normal super boss.
 //Teleport of devastation, Pablo does the comp animation (wait/loose) after that teleports behind the victim 
 //upon teleporting, Pablo does a Ion strike. Anyone near the victim will create more ion strikes
 //whoever had the ion strike gets the full damage, anyone else takes less by 55%.
-//Rage. upon activation pablo is doing the disco taunt and gains 50% resistance, doing repeated AoE effects.
+
 
 static char g_DeathSounds[][] = {
 	"npc/zombie/zombie_die1.wav",
@@ -74,10 +80,12 @@ static char g_Trickstab_Hit[][] = {
 
 static int i_LaserHits = 0;
 static float fl_DefaultSpeed_Pablo_Gonzales = 300.0;
+static bool b_noscale = false;
 
 public void Pablo_Gonzales_OnMapStart_NPC()
 {
 	i_LaserHits = 0;
+	b_noscale = false;
 	PrecacheSoundArray(g_DeathSounds);
 	PrecacheSoundArray(g_HurtSounds);
 	PrecacheSoundArray(g_IdleSounds);
@@ -221,6 +229,7 @@ methodmap Pablo_Gonzales < CClotBody
 		this.PlayRageSound();
 		
 		//ADD RAGE STUFF HERE
+		this.ChangeWeapons(4);
 	}
 	public bool Rage_FullyCharged()
 	{
@@ -333,6 +342,7 @@ methodmap Pablo_Gonzales < CClotBody
 			}
 			case 4:{
 				timer = 6.0;
+				this.ArmorSet(0.35);
 			}
 			default: {
 				usage = 0;
@@ -351,6 +361,25 @@ methodmap Pablo_Gonzales < CClotBody
 		if(weaponchar[0])
 			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
 	}
+	public float AbilityRegainTime()
+	{
+		switch(this.i_WeaponArg)
+		{
+			case 1:
+				return 7.4;
+			case 2:
+				return 8.0;
+			case 4:
+				return this.fl_AbilityGain_Timer - GetGameTime(this.index);
+		}
+		return 10.0;
+	}
+	public int AbilityRngChooser()
+	{
+		int rng = GetURandomInt() % 4;//I find this one giving more better rng results, issue is just the 0 still being counted in.
+		bool tabuu = (rng == 0 || rng == 4);//technically 4 won't happen, i just do it for sanity check
+		return (tabuu ? 1 : rng);
+	}
 	public bool AbilityUsages(float gameTime)
 	{
 		//This became a bool, incase you wanna just do return in the code end
@@ -361,8 +390,7 @@ methodmap Pablo_Gonzales < CClotBody
 			{
 				if(this.fl_AbilityGain_Timer < gameTime)
 				{
-					int abilityRng = GetRandomInt(1, 3);
-					this.ChangeWeapons(1);
+					this.ChangeWeapons(this.AbilityRngChooser());
 				}
 			}
 			case 4:
@@ -409,11 +437,12 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void CleanUpPreset()
 	{
+		this.i_WeaponArg = 0;
 		this.fl_Weapon_Timer = 0.0;
 		this.fl_Delay_RageEffect = 0.0;
 		this.fl_Rage_Amount = 0.0;
 		this.fl_LaserGun_AboutToShoot = 0.0;
-		this.fl_AbilityGain_Timer = GetGameTime(this.index) + 10.0;
+		this.fl_AbilityGain_Timer = GetGameTime(this.index) + this.AbilityRegainTime();
 		this.i_Stabbed = 0;
 		this.m_flNextMeleeAttack = 0.0;
 		i_LaserHits = 0;
@@ -421,6 +450,7 @@ methodmap Pablo_Gonzales < CClotBody
 	}
 	public void ResetState()
 	{
+		float time = this.AbilityRegainTime();
 		this.AnimChanger(_, "ACT_MP_RUN_MELEE");
 		this.ChangeWeapons();
 		this.fl_Weapon_Timer = 0.0;
@@ -434,7 +464,8 @@ methodmap Pablo_Gonzales < CClotBody
 		i_NpcWeight[npc.index] = 5;
 		
 		FormatEx(c_HeadPlaceAttachmentGibName[npc.index], sizeof(c_HeadPlaceAttachmentGibName[]), "head");
-		
+
+		npc.CleanUpPreset();
 		npc.ChangeWeapons();
 
 		bool clone = StrContains(data, "clone") != -1;
@@ -445,18 +476,22 @@ methodmap Pablo_Gonzales < CClotBody
 		npc.m_iNpcStepVariation = STEPTYPE_NORMAL;
 		npc.m_bDissapearOnDeath = true;
 
-		npc.CleanUpPreset();
-		
 		if(!clone)
 		{
 			bool noscaling = !(StrContains(data, "Scaling") != -1);
+			bool superboss = !(StrContains(data, "SuperBoss") != -1);
+			b_noscale = noscaling;
 			RaidBossStatus Raid;
-			Raid.israid = false; //If raid true, If superboss false
-			Raid.allow_builings = true;
-			Raid.Reduction_45 = 0.15;
-			Raid.Reduction_60 = 0.3;
-			Raid.Reduction_Last = 0.4;
-			Raid.RaidTime = 99999.0;
+			Raid.israid = superboss; //If raid true, If superboss false
+			Raid.allow_builings = !superboss;
+			if(Raid.israid && !noscaling)
+			{
+				Raid.Reduction_45 = 0.15;
+				Raid.Reduction_60 = 0.3;
+				Raid.Reduction_Last = 0.4;
+			}
+			
+			Raid.RaidTime = Raid.israid ? 215.0 : 99999.0;
 			Raid.ignore_scaling = noscaling;
 			
 			//If you want to check if there is already a raid, and want to add args for that !Raid.Setup(true, npc);
@@ -635,8 +670,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			float radius = 1000.0;
 			int hitradius = 55;
 			//Idk what i did but something broke the end point location lol. I don't mind it tbh as it looks nice, but even then odd
-			//TE_Cube_Line_Visual(npc, radius, vec_Previous, vec_Previous_Self, color, hitradius, float(hitradius));
-			TE_Cube_Line_Visual(npc, radius, vec_Previous_Self, vec_Previous, color, hitradius, float(hitradius));//Made it the line being short on his end instead of where the enemy is.
+			TE_Cube_Line_Visual(npc, radius, vec_Previous, vec_Previous_Self, color, hitradius, float(hitradius));
 			if(shoot)
 			{
 				Ruina_Laser_Logic Laser;
@@ -712,14 +746,7 @@ static void Pablo_Gonzales_SelfDefense(Pablo_Gonzales npc, float gameTime, int t
 				npc.m_flNextMeleeAttack = gameTime + attackrate;
 				float minVec[3] = {-64.0, -64.0, -128.0}, maxVec[3] = {64.0, 64.0, 128.0};
 				int frames = 11;
-				//DataPack pack = new DataPack();
-				//pack.WriteCell(EntIndexToEntRef(npc.index));
-				//pack.WriteFloat(damage);
-				//pack.WriteFunction(trick ? Pablo_OnHit_Trickstab : Pablo_OnHit);
-				//pack.WriteFloat(trick ? 300.0 : 0.0);
-				//pack.WriteFloatArray(minVec, sizeof(minVec));
-				//pack.WriteFloatArray(maxVec, sizeof(maxVec));
-				//RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
+				
 				Npc_SingleTarget_MeleeAttack Melee;
 				Melee.index = npc.index;
 				Melee.damage = damage;
@@ -963,8 +990,8 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 	{
 		time = 0.05019608415;
 	}
-	float vecForward[3], Angles[3];
-
+	float vecForward[3], Angles[3];//, vecStart[3];
+	//vecStart = VectorStart;
 	GetVectorAnglesTwoPoints(VectorStart, VectorTarget, Angles);
 
 	GetAngleVectors(Angles, vecForward, NULL_VECTOR, NULL_VECTOR);
@@ -981,7 +1008,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 		switch(BeamCube)
 		{
 			case 0:
-				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = hitrange, OffsetFromMiddle[2] = hitrange;
+				OffsetFromMiddle = {0.0, view_as<float>(hitrange), view_as<float>(hitrange)}
 			case 1:
 				OffsetFromMiddle[0] = 0.0, OffsetFromMiddle[1] = -hitrange, OffsetFromMiddle[2] = -hitrange;
 			case 2:
@@ -995,6 +1022,7 @@ void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float Vect
 		VectorStartEdit = VectorStart;
 
 		GetBeamDrawStartPoint_Stock(npc.index, VectorStartEdit, OffsetFromMiddle, AnglesEdit);
+		//GetBeamDrawStartPoint_Stock(npc.index, VectorTarget_2, OffsetFromMiddle, AnglesEdit);
 
 		TE_SetupBeamPoints(VectorStartEdit, VectorTarget_2, Shared_BEAM_Laser, 0, 0, 0, time, ClampBeamWidth(diameter * 0.1), ClampBeamWidth(diameter * 0.1), 0, 0.0, color, 0);
 		TE_SendToAll(0.0);
