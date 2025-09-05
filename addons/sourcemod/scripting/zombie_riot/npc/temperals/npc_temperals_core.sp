@@ -416,7 +416,7 @@ enum struct Npc_SingleTarget_MeleeAttack
 		}
 		else
 		{
-			RequestFrames(Temperals_SingleDamage_Melee, frames, pack);
+			RequestFrames(Temperals_SingleDamage_Melee, this.frames, pack);
 		}
 	}
 }

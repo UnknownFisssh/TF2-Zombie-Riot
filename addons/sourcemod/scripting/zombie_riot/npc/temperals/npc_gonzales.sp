@@ -351,8 +351,9 @@ methodmap Pablo_Gonzales < CClotBody
 		if(weaponchar[0])
 			this.m_iWearable6 = this.EquipItem("weapon_bone", weaponchar);
 	}
-	public bool AbilityUsages()
-	{//This became a bool, incase you wanna just do return in the code end
+	public bool AbilityUsages(float gameTime)
+	{
+		//This became a bool, incase you wanna just do return in the code end
 		bool returntime = (this.fl_Weapon_Timer < gameTime);
 		switch(this.i_WeaponArg)
 		{
@@ -564,7 +565,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		npc.m_flSpeed = fl_DefaultSpeed_Pablo_Gonzales;
 	}
 
-	if(npc.AbilityUsages())
+	if(npc.AbilityUsages(gameTime))
 	{
 		return;
 	}
