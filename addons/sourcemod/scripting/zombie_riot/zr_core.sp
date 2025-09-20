@@ -289,6 +289,7 @@ ConVar CvarNoSpecialZombieSpawn;
 ConVar zr_disablerandomvillagerspawn;
 ConVar zr_waitingtime;
 ConVar zr_maxscaling_untillhp;
+ConVar zr_maxsbosscaling_untillhp;
 ConVar zr_raidmultihp;
 ConVar zr_multi_maxenemiesalive_cap;
 ConVar zr_multi_scaling;
@@ -729,6 +730,8 @@ void ZR_MapStart()
 	PrecacheSound("#zombiesurvival/setup_music_extreme_z_battle_dokkan.mp3");
 	PrecacheSound("ui/chime_rd_2base_neg.wav");
 	PrecacheSound("ui/chime_rd_2base_pos.wav");
+	PrecacheSound("items/suitchargeno1.wav");
+	PrecacheSound("beams/beamstart5.wav");
 	TeutonSoundOverrideMapStart();
 	BarneySoundOverrideMapStart();
 	KleinerSoundOverrideMapStart();
