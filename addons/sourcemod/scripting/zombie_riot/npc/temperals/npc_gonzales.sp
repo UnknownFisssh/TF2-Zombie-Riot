@@ -18,15 +18,21 @@
 
 
 static char g_DeathSounds[][] = {
-	"npc/zombie/zombie_die1.wav",
+	"weapons/rescue_ranger_teleport_receive_02.wav",
 };
 
 static char g_HurtSounds[][] = {
-	"npc/zombie/zombie_pain1.wav",
+	"vo/spy_niceshot01.mp3",
+	"vo/spy_niceshot02.mp3",
+	"vo/spy_niceshot03.mp3"
 };
 
 static char g_IdleSounds[][] = {
 	"npc/zombie/zombie_voice_idle1.wav",
+};
+static char g_LastManSound[][] = {
+	"vo/taunts/spy_taunts07.mp3",
+	"vo/spy_dominationheavy01.mp3"
 };
 
 static char g_IdleAlertedSounds[][] = {
@@ -37,10 +43,13 @@ static char g_IntroSound[][] = {
 };
 
 static char g_MeleeHitSounds[][] = {
-	"npc/fast_zombie/claw_strike1.wav",
+	"weapons/blade_hit1.wav",
+	"weapons/blade_hit2.wav",
+	"weapons/blade_hit3.wav",
+	"weapons/blade_hit4.wav",
 };
 static char g_MeleeAttackSounds[][] = {
-	"npc/zombie/zo_attack1.wav",
+	"weapons/knife_swing.wav",
 };
 
 static char g_MeleeMissSounds[][] = {
@@ -59,19 +68,28 @@ static char g_BackstabSounds[][] = {
 static char g_BackstabSFX[][] = {
 	"player/spy_shield_break.wav",
 };
+//static char g_TrickstabSounds[][] = {
+//	"vo/spy_dominationspy03.mp3",
+//};
+
 static char g_WeaponAbilitySounds[][] = {
-	"vo/spy_dominationengineer06.mp3",
-	"vo/spy_dominationheavy01.mp3",
+	"vo/spy_dominationspy01.mp3",//LaserGun
+	"vo/spy_dominationengineer06.mp3",//Trickstab Initial
+	"vo/taunts/spy/spy_taunt_flip_fun_01.mp3",//Rage Taunt
 };
 static char g_WeaponAbilitySFX[][] = {
-	"player/spy_shield_break.wav",
-	"vo/spy_dominationengineer06.mp3"
+	"weapons/loose_cannon_charge.wav",
+	"weapons/sniper_railgun_charged_shot_02.wav"
 };
 static char g_LaserAmby_Hit[][] = {
 	"vo/spy_dominationmedic04.mp3",
 	"vo/spy_dominationmedic06.mp3",
 	"vo/spy_dominationscout05.mp3",
 	"vo/spy_revenge01.mp3"
+};
+static char g_LaserAmby_EffectSound[][] = {
+	"weapons/rescue_ranger_charge_02.wav",
+	"ambient/fireball.wav"
 };
 static char g_Trickstab_Hit[][] = {
 	"vo/spy_dominationsniper03.mp3",
@@ -89,6 +107,7 @@ public void Pablo_Gonzales_OnMapStart_NPC()
 	PrecacheSoundArray(g_DeathSounds);
 	PrecacheSoundArray(g_HurtSounds);
 	PrecacheSoundArray(g_IdleSounds);
+	PrecacheSoundArray(g_LastManSound);
 	PrecacheSoundArray(g_IdleAlertedSounds);
 	PrecacheSoundArray(g_IntroSound);
 	PrecacheSoundArray(g_MeleeHitSounds);
@@ -97,6 +116,11 @@ public void Pablo_Gonzales_OnMapStart_NPC()
 	PrecacheSoundArray(g_RageSound);
 	PrecacheSoundArray(g_BackstabSounds);
 	PrecacheSoundArray(g_BackstabSFX);
+	PrecacheSoundArray(g_WeaponAbilitySounds);
+	PrecacheSoundArray(g_WeaponAbilitySFX);
+	PrecacheSoundArray(g_LaserAmby_Hit);
+	PrecacheSoundArray(g_LaserAmby_EffectSound);
+	PrecacheSoundArray(g_Trickstab_Hit);
 	PrecacheSoundCustom("#zombiesurvival/temperals/special/gonzales_bgm.mp3");
 
 	NPCData data;
@@ -178,11 +202,33 @@ methodmap Pablo_Gonzales < CClotBody
 			EmitSoundToClient(target, g_BackstabSFX[GetRandomInt(0, sizeof(g_BackstabSFX) - 1)], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
 		}
 	}
+	public void PlayTrickstabSound(int target)
+	{
+		int rng = GetRandomInt(0, sizeof(g_Trickstab_Hit) - 1);
+		EmitSoundToAll(g_Trickstab_Hit[rng], this.index, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
+		EmitSoundToAll(g_BackstabSFX[0], this.index, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME, 90);
+		if(target <= MaxClients)
+		{
+			EmitSoundToClient(target, g_Trickstab_Hit[rng], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
+			EmitSoundToClient(target, g_BackstabSFX[0], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
+		}
+	}
+	public void PlayLaserAmbyVictimHits(int target, int usage)
+	{
+		if(target <= MaxClients)
+		{
+			EmitSoundToClient(target, g_LaserAmby_EffectSound[usage], target, SNDCHAN_AUTO, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
+		}
+	}
 	public void PlayIdleSound() {
 		if(this.m_flNextIdleSound > GetGameTime(this.index))
 			return;
 		EmitSoundToAll(g_IdleSounds[GetRandomInt(0, sizeof(g_IdleSounds) - 1)], this.index, SNDCHAN_VOICE, NORMAL_ZOMBIE_SOUNDLEVEL, _, NORMAL_ZOMBIE_VOLUME, 90);
 		this.m_flNextIdleSound = GetGameTime(this.index) + GetRandomFloat(3.0, 6.0);
+	}
+	public void PlayLastManSound() {
+		EmitSoundToAll(g_LastManSound[GetRandomInt(0, sizeof(g_LastManSound) - 1)], _, SNDCHAN_VOICE, NORMAL_ZOMBIE_SOUNDLEVEL, _, NORMAL_ZOMBIE_VOLUME, 90);
+		this.m_flNextIdleSound = GetGameTime(this.index) + 10.0;
 	}
 	public void PlayIntro() {
 		if(this.m_flNextIdleSound > GetGameTime(this.index))
@@ -197,6 +243,18 @@ methodmap Pablo_Gonzales < CClotBody
 		this.m_flNextHurtSound = GetGameTime(this.index) + 0.4;
 		
 		EmitSoundToAll(g_HurtSounds[GetRandomInt(0, sizeof(g_HurtSounds) - 1)], this.index, SNDCHAN_VOICE, NORMAL_ZOMBIE_SOUNDLEVEL, _, NORMAL_ZOMBIE_VOLUME, 90);
+	}
+	public void PlayWeaponAbilitySounds(int usage = 0) {
+			
+		this.m_flNextHurtSound = GetGameTime(this.index) + 0.4;
+		
+		EmitSoundToAll(g_WeaponAbilitySounds[usage], this.index, SNDCHAN_STATIC, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME, 90);
+	}
+	public void PlayWeaponAbilitySFX(int usage = 0) {
+		EmitSoundToAll(g_WeaponAbilitySFX[usage], this.index, SNDCHAN_STATIC, BOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME, 90);
+	}
+	public void PlayLaserAmbyLaughingSound() {
+		EmitSoundToAll(g_LaserAmby_Hit[GetRandomInt(0, sizeof(g_LaserAmby_Hit) - 1)], this.index, SNDCHAN_VOICE, NORMAL_ZOMBIE_SOUNDLEVEL, _, NORMAL_ZOMBIE_VOLUME, 90);
 	}
 	public void PlayDeathSound() {
 		EmitSoundToAll(g_DeathSounds[GetRandomInt(0, sizeof(g_DeathSounds) - 1)], this.index, SNDCHAN_VOICE, NORMAL_ZOMBIE_SOUNDLEVEL, _, NORMAL_ZOMBIE_VOLUME, 90);
@@ -332,6 +390,7 @@ methodmap Pablo_Gonzales < CClotBody
 				timer = 5.33;
 				this.fl_LaserGun_AboutToShoot = GetGameTime(this.index) + 3.3;
 				this.ArmorSet(0.5);
+				this.PlayWeaponAbilitySounds(0);
 			}
 			case 2: {
 				weaponchar = "models/weapons/c_models/c_letranger/c_letranger.mdl";
@@ -339,10 +398,12 @@ methodmap Pablo_Gonzales < CClotBody
 			case 3: {
 				timer = 7.0;
 				weaponchar = "models/workshop_partner/weapons/c_models/c_shogun_kunai/c_shogun_kunai.mdl";
+				this.PlayWeaponAbilitySounds(1);
 			}
 			case 4:{
 				timer = 6.0;
 				this.ArmorSet(0.35);
+				this.PlayWeaponAbilitySounds(2);
 			}
 			default: {
 				usage = 0;
@@ -483,7 +544,7 @@ methodmap Pablo_Gonzales < CClotBody
 			b_noscale = noscaling;
 			RaidBossStatus Raid;
 			Raid.israid = superboss; //If raid true, If superboss false
-			Raid.allow_builings = !superboss;
+			Raid.allow_builings = superboss;
 			if(Raid.israid && !noscaling)
 			{
 				Raid.Reduction_45 = 0.15;
@@ -566,7 +627,8 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		if(!npc.m_fbGunout)
 		{
 			npc.m_fbGunout = true;
-			Pablo_Gonzales_Lastman_Messages(npc);
+			if(!Pablo_Gonzales_Lastman_Messages(npc))
+				npc.PlayLastManSound();
 		}
 	}
 
@@ -592,7 +654,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 	npc.Anger = !npc.Anger;//Passively angry! cause he sucks ingame.
 	if(!npc.Anger)
 	{
-		npc.m_flSpeed = (fl_DefaultSpeed_Pablo_Gonzales * 1.07);
+		npc.m_flSpeed = (fl_DefaultSpeed_Pablo_Gonzales * GetRandomFloat(1.04, 1.1));
 	}
 	else
 	{
@@ -642,8 +704,13 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 		{
 			float time = npc.fl_LaserGun_AboutToShoot - gameTime;
 			if(time >= 99999.0 || time < 3.35 && time > 3.0)
-			return;
-
+			{
+				if(time <= 3.1 && time >= 3.09)
+					npc.PlayWeaponAbilitySFX();
+				
+				return;
+			}
+			
 			int color[4] = {40, 60, 255, 255};
 			bool shoot = false;
 			static float vec_Previous[3];
@@ -672,6 +739,7 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 			TE_Cube_Line_Visual(npc, radius, vec_Previous, vec_Previous_Self, color, hitradius, float(hitradius));
 			if(shoot)
 			{
+				npc.PlayWeaponAbilitySFX(1);
 				Ruina_Laser_Logic Laser;
 				Laser.client = npc.index;
 				Laser.Start_Point = vec_Previous_Self;
@@ -693,14 +761,20 @@ static void Pablo_Gonzales_ClotThink(int iNPC)
 					
 					if(i_LaserHits <= 0)
 					{
+						npc.PlayLaserAmbyVictimHits(vic, 1);
 						SDKHooks_TakeDamage(vic, npc.index, npc.index, damage, DMG_PLASMA, -1, _, vecTarget);
 					}
 					else
 					{
+						npc.PlayLaserAmbyVictimHits(vic, 0);
 						IncreaseEntityDamageTakenBy(vic, 0.35, GetRandomFloat(10.0, 20.0), true);
 						SDKHooks_TakeDamage(vic, npc.index, npc.index, tempdmg, DMG_PLASMA, -1, _, vecTarget);
 					}
 					i_LaserHits++;
+				}
+				if(i_LaserHits > 0)//more then 0, if we got one, just play it
+				{
+					npc.PlayLaserAmbyLaughingSound();
 				}
 				npc.AnimChanger(_, "", 1.0, _, false);
 			}
@@ -813,6 +887,7 @@ static void Pablo_OnHit_Trickstab(int entity, int victim, float damage)
 	Pablo_Gonzales npc = view_as<Pablo_Gonzales>(entity);
 	npc.fl_Weapon_Timer = GetGameTime(npc.index);
 	npc.fl_Trickstab_Buff = GetGameTime(npc.index) + 4.0;
+	npc.PlayTrickstabSound();
 	npc.PlayMeleeHitSound();
 }
 
@@ -875,14 +950,9 @@ static void Pablo_Gonzales_NPCDeath(int entity)
 	npc.RemoveWeapon();
 
 	npc.PlayDeathSound();
-	//if(Waves_GetRoundScale()+1 > 45)
-	//{
-	//	//Pablo_Gonzales_Death_Messages(GetRandomInt(0, 1));
-	//}
-	//else
-	//{
-	//	//Pablo_Gonzales_Death_Messages(GetRandomInt(2, 3));
-	//}
+	float WorldSpaceVec[3]; WorldSpaceCenter(npc.index, WorldSpaceVec);
+	ParticleEffectAt(WorldSpaceVec, "teleported_blue", 0.5);
+	ParticleEffectAt(WorldSpaceVec, "teleported_red", 0.5);
 
 	if(npc.index == EntRefToEntIndex(RaidBossActive))
 	{
@@ -892,13 +962,18 @@ static void Pablo_Gonzales_NPCDeath(int entity)
 	Citizen_MiniBossDeath(entity);
 }
 
-static void Pablo_Gonzales_Reply(const char[] text)
+static void Pablo_Gonzales_Reply(Pablo_Gonzales npc, const char[] text)
 {
-	CPrintToChatAll("{crimson}???{default}:{yellow} %s", text);
+	CPrintToChatAll("{crimson}%s{default}:{yellow} %s", NpcStats_ReturnNpcName(this.index), text);
 }
 
-static void Pablo_Gonzales_Lastman_Messages(Pablo_Gonzales npc)
+static bool Pablo_Gonzales_Lastman_Messages(Pablo_Gonzales npc)
 {
+	if(b_thisNpcIsARaid[npc.index])
+	{
+		return false;
+	}
+	
 	char text[255];
 	switch(GetRandomInt(0, 5))
 	{
@@ -931,58 +1006,17 @@ static void Pablo_Gonzales_Lastman_Messages(Pablo_Gonzales npc)
 			FormatEx(text, sizeof(text), "");
 		}
 	}
+	if(text[0])
+	{
+		Pablo_Gonzales_Reply(npc, text);
+	}
+	else
+	{
+		return false;
+	}
 
-	Pablo_Gonzales_Reply(text);
+	return true;
 }
-/*
-static void Pablo_Gonzales_Backstab_Messages(int stabber)
-{
-	char text[255];
-	switch(GetRandomInt(0, 3))
-	{
-		case 0:
-		{
-			FormatEx(text, sizeof(text), "", stabber);
-		}
-		case 1:
-		{
-			FormatEx(text, sizeof(text), "");
-		}
-		case 2:
-		{
-			FormatEx(text, sizeof(text), "");
-		}
-		case 3:
-		{
-			FormatEx(text, sizeof(text), "", stabber);
-		}
-	}
-	Pablo_Gonzales_Reply(text);
-}
-static void Pablo_Gonzales_Final_Messages(int line)
-{
-	char text[255];
-	switch(line)
-	{
-		case 0:
-		{
-			FormatEx(text, sizeof(text), "");
-		}
-		case 1:
-		{
-			FormatEx(text, sizeof(text), "");
-		}
-		case 2:
-		{
-			FormatEx(text, sizeof(text), "");
-		}
-		case 3:
-		{
-			FormatEx(text, sizeof(text), "");
-		}
-	}
-	Pablo_Gonzales_Reply(text);
-}*/
 
 void TE_Cube_Line_Visual(CClotBody npc, float VectorForward = 1000.0, float VectorTarget[3], float VectorStart[3], int color[4] = {255, 255, 255, 255}, int size = 35, float hitrange = 35.0, float time = 0.05019608415)
 {
