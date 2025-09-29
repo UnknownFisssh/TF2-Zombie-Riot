@@ -232,9 +232,9 @@ methodmap Umbral_WF < CClotBody
 			{
 				//if completly hated.
 				//no need to adjust HP scaling, so it can be done here.
-				fl_Extra_Damage[npc.index] *= 2.0;
-				fl_Extra_MeleeArmor[npc.index] *= 0.65;
-				fl_Extra_RangedArmor[npc.index] *= 0.65;
+				fl_Extra_Damage[npc.index] *= 1.5;
+				fl_Extra_MeleeArmor[npc.index] *= 0.75;
+				fl_Extra_RangedArmor[npc.index] *= 0.75;
 			}
 		}
 		
@@ -626,13 +626,13 @@ static void Umbral_WF_KickTouched(int entity, int enemy)
 	{
 		f_AntiStuckPhaseThrough[enemy] = GetGameTime() + 1.0;
 		ApplyStatusEffect(enemy, enemy, "Intangible", 1.0);
-		Custom_Knockback(entity, enemy, 1500.0, true, true);
+		Custom_Knockback(entity, enemy, 750.0, true, true);
 		TF2_AddCondition(enemy, TFCond_LostFooting, 0.5);
 		TF2_AddCondition(enemy, TFCond_AirCurrent, 0.5);
 	}
 	else
 	{
-		Custom_Knockback(entity, enemy, 800.0, true, true);
+		Custom_Knockback(entity, enemy, 400.0, true, true);
 	}
 }
 

@@ -62,17 +62,17 @@ public const char PerkNames[][] =
 	"Energy Drink"
 };
 
-public const char PerkNames_Recieved[][] =
+public const char PerkNames_Received[][] =
 {
 	"No Perk",
-	"Regene Berry Recieved",
-	"Obsidian Oaf Recieved",
-	"Morning Coffee Recieved",
-	"Hasty Hops Recieved",
-	"Marksman Beer Recieved",
-	"Teslar Mule Recieved",
-	"Stockpile Stout Recieved",
-	"Energy Drink Recieved"
+	"Regene Berry Received",
+	"Obsidian Oaf Received",
+	"Morning Coffee Received",
+	"Hasty Hops Received",
+	"Marksman Beer Received",
+	"Teslar Mule Received",
+	"Stockpile Stout Received",
+	"Energy Drink Received"
 };
 
 public const char PerkNames_two_Letter[][] =
@@ -382,7 +382,7 @@ int CashSpentGivePostSetup[MAXPLAYERS];
 bool CashSpentGivePostSetupWarning[MAXPLAYERS];
 int CashSpentTotal[MAXPLAYERS];
 int CashSpentLoadout[MAXPLAYERS];
-int CashRecievedNonWave[MAXPLAYERS];
+int CashReceivedNonWave[MAXPLAYERS];
 bool StarterCashMode[MAXPLAYERS] = {true, ...};
 int Scrap[MAXPLAYERS];
 int PlayStreak[MAXPLAYERS];
@@ -1054,7 +1054,7 @@ void ZR_ClientPutInServer(int client)
 	TeutonType[client] = 0;
 	Damage_dealt_in_total[client] = 0.0;
 	Resupplies_Supplied[client] = 0;
-	CashRecievedNonWave[client] = 0;
+	CashReceivedNonWave[client] = 0;
 	Healing_done_in_total[client] = 0;
 	i_BarricadeHasBeenDamaged[client] = 0;
 	i_PlayerDamaged[client] = 0;
@@ -1109,7 +1109,7 @@ void ZR_ClientDisconnect(int client)
 	b_HasBeenHereSinceStartOfWave[client] = false;
 	Damage_dealt_in_total[client] = 0.0;
 	Resupplies_Supplied[client] = 0;
-	CashRecievedNonWave[client] = 0;
+	CashReceivedNonWave[client] = 0;
 	Healing_done_in_total[client] = 0;
 	Armor_Charge[client] = 0;
 	PlayerPoints[client] = 0;
@@ -1316,16 +1316,6 @@ public Action CommandDebugHudTest(int client, int args)
 
 	int Number = GetCmdArgInt(1);
 	Medival_Wave_Difficulty_Riser(Number);
-	DoGlobalMultiScaling();
-	float ScalingTestDo = GetScaledPlayerCountMulti(Number);
-	PrintToChatAll("ScalingTestDo %f",ScalingTestDo);
-	int entity, i;
-	while(TF2U_GetWearable(client, entity, i))
-	{
-		SetTeam(entity, 2);
-		SetEntProp(entity, Prop_Send, "m_nSkin", Number);
-	}
-	CheckAlivePlayers(_, _, true);
 	return Plugin_Handled;
 }
 
@@ -1667,7 +1657,7 @@ public void OnClientAuthorized(int client)
 			cash += StartCash / 2;
 		
 		CashSpent[client] = -cash;
-		CashRecievedNonWave[client] = cash;
+		CashReceivedNonWave[client] = cash;
 	}
 }
 
@@ -1718,6 +1708,7 @@ public Action Timer_Dieing(Handle timer, int client)
 				DoOverlay(client, "", 2);
 				SetEntityHealth(client, 50);
 				RequestFrame(SetHealthAfterRevive, EntIndexToEntRef(client));
+				Rogue_TriggerFunction(Artifact::FuncRevive, client);
 				int entity, i;
 				while(TF2U_GetWearable(client, entity, i))
 				{

@@ -604,7 +604,7 @@ void Store_OnCached(int client)
 		{
 			Store_SetNamedItem(client, "ZR Contest Nominator [???] Cash", 1);
 			//Building_GiveRewardsUse(0, client, amount);
-			CashRecievedNonWave[client] += amount;
+			CashReceivedNonWave[client] += amount;
 			CashSpent[client] -= amount;
 			CashSpentLoadout[client] -= amount;
 		}
@@ -616,7 +616,7 @@ void Store_OnCached(int client)
 		{
 			Store_SetNamedItem(client, "ZR Content Creator [???] Cash", 1);
 			//Building_GiveRewardsUse(0, client, 50);
-			CashRecievedNonWave[client] += 50;
+			CashReceivedNonWave[client] += 50;
 			CashSpent[client] -= 50;
 			CashSpentLoadout[client] -= 50;
 		}
@@ -3375,7 +3375,7 @@ static void MenuPage(int client, int section)
 		if(StarterCashMode[client])
 			Format(buf, sizeof(buf), "%T", "Loadout Credits", client, cash);
 		else
-			Format(buf, sizeof(buf), "%T", "Credits_Menu", client, cash, GlobalExtraCash + CashRecievedNonWave[client]);
+			Format(buf, sizeof(buf), "%T", "Credits_Menu", client, cash, GlobalExtraCash + CashReceivedNonWave[client]);
 		item.GetItemInfo(0, info);
 		menu = new Menu(Store_MenuPage);
 		if(NPCOnly[client] == 1)
@@ -3411,7 +3411,7 @@ static void MenuPage(int client, int section)
 		if(StarterCashMode[client])
 			Format(buf, sizeof(buf), "%T", "Loadout Credits", client, cash);
 		else
-			Format(buf, sizeof(buf), "%T", "Credits_Menu", client, cash, GlobalExtraCash + CashRecievedNonWave[client]);
+			Format(buf, sizeof(buf), "%T", "Credits_Menu", client, cash, GlobalExtraCash + CashReceivedNonWave[client]);
 		int nextAt = xpNext-xpLevel;
 		menu = new Menu(Store_MenuPage);
 		if(NPCOnly[client] == 1)
@@ -5210,7 +5210,7 @@ void Store_ApplyAttribs(int client)
 							{
 								map.SetValue(buffer1, info.Value[a]);
 							}
-							else if(info.Attrib[a] < 0 || info.Attrib[a]==26 || (TF2Econ_GetAttributeDefinitionString(info.Attrib[a], "description_format", buffer2, sizeof(buffer2)) && StrContains(buffer2, "additive")!=-1))
+							else if(info.Attrib[a] < 0 || info.Attrib[a]==26 || (Attribute_IntAttribute(info.Attrib[a]) || (TF2Econ_GetAttributeDefinitionString(info.Attrib[a], "description_format", buffer2, sizeof(buffer2)) && StrContains(buffer2, "additive")!=-1)))
 							{
 								map.SetValue(buffer1, value + info.Value[a]);
 							}
@@ -5230,7 +5230,7 @@ void Store_ApplyAttribs(int client)
 							{
 								map.SetValue(buffer1, info.Value2[a]);
 							}
-							else if(info.Attrib2[a] < 0 || info.Attrib2[a]==26 || (TF2Econ_GetAttributeDefinitionString(info.Attrib2[a], "description_format", buffer2, sizeof(buffer2)) && StrContains(buffer2, "additive")!=-1))
+							else if(info.Attrib2[a] < 0 || info.Attrib2[a]==26 || (Attribute_IntAttribute(info.Attrib[a]) || (TF2Econ_GetAttributeDefinitionString(info.Attrib[a], "description_format", info.Classname, sizeof(info.Classname)) && StrContains(info.Classname, "additive")!=-1)))
 							{
 								map.SetValue(buffer1, value + info.Value2[a]);
 							}
@@ -6032,7 +6032,7 @@ int Store_GiveItem(int client, int index, bool &use=false, bool &found=false)
 											Attributes_Set(entity, info.Attrib[a], info.Value[a]);
 									}
 								}
-								else if(!ignore_rest && TF2Econ_GetAttributeDefinitionString(info.Attrib[a], "description_format", info.Classname, sizeof(info.Classname)) && StrContains(info.Classname, "additive")!=-1)
+								else if(!ignore_rest && (Attribute_IntAttribute(info.Attrib[a]) || (TF2Econ_GetAttributeDefinitionString(info.Attrib[a], "description_format", info.Classname, sizeof(info.Classname)) && StrContains(info.Classname, "additive")!=-1)))
 								{
 									Attributes_SetAdd(entity, info.Attrib[a], info.Value[a]);
 								}
@@ -6064,7 +6064,7 @@ int Store_GiveItem(int client, int index, bool &use=false, bool &found=false)
 											Attributes_Set(entity, info.Attrib2[a], info.Value2[a]);
 									}
 								}
-								else if(!ignore_rest && TF2Econ_GetAttributeDefinitionString(info.Attrib2[a], "description_format", info.Classname, sizeof(info.Classname)) && StrContains(info.Classname, "additive")!=-1)
+								else if(!ignore_rest && (Attribute_IntAttribute(info.Attrib2[a]) || (TF2Econ_GetAttributeDefinitionString(info.Attrib2[a], "description_format", info.Classname, sizeof(info.Classname)) && StrContains(info.Classname, "additive")!=-1)))
 								{
 									Attributes_SetAdd(entity, info.Attrib2[a], info.Value2[a]);
 								}
@@ -6708,18 +6708,18 @@ void GiveCredits(int client, int credits, bool building)
 		int CreditsGive = credits / 2;
 		CashSpentGivePostSetup[client] += CreditsGive;
 		CashSpent[client] -= CreditsGive;
-		CashRecievedNonWave[client] += CreditsGive;
+		CashReceivedNonWave[client] += CreditsGive;
 	}
 	else
 	{
 		CashSpent[client] -= credits;
-		CashRecievedNonWave[client] += credits;
+		CashReceivedNonWave[client] += credits;
 	}
 }
 
 void GrantCreditsBack(int client)
 {
-	CashRecievedNonWave[client] += CashSpentGivePostSetup[client];
+	CashReceivedNonWave[client] += CashSpentGivePostSetup[client];
 	CashSpent[client] -= CashSpentGivePostSetup[client];
 	CashSpentGivePostSetup[client] = 0;
 	CashSpentGivePostSetupWarning[client] = false;

@@ -24,6 +24,11 @@ public void Rogue_Vote_GamemodeHistory(const Vote vote, int index)
 	{
 		case 0:
 		{
+			int Disable = ReturnFoundEntityViaName("computer_off_stage");
+			if(IsValidEntity(Disable))
+				AcceptEntityInput(Disable, "Disable");
+
+			CreateTimer(15.0, Timer_Rogue_DisableScreenAgain);
 			Rogue_GiveNamedArtifact("Gamemode History", true);
 			GiveCash(5000);
 		}
@@ -34,7 +39,13 @@ public void Rogue_Vote_GamemodeHistory(const Vote vote, int index)
 		}
 	}
 }
-
+static Action Timer_Rogue_DisableScreenAgain(Handle timer, int progress)
+{
+	int Disable = ReturnFoundEntityViaName("computer_off_stage");
+	if(IsValidEntity(Disable))
+		AcceptEntityInput(Disable, "Enable");
+	return Plugin_Stop;
+}
 public float Rogue_Encounter_PoisonWater()
 {
 	ArrayList list = Rogue_CreateGenericVote(Rogue_Vote_PoisonWater, "Poison Water Lore");
@@ -217,6 +228,7 @@ public void Rogue_Vote_Astra_Vote(const Vote vote, int index)
 		{
 			CPrintToChatAll("%t", "Astra Title Accept Conlusion");
 			Rogue_GiveNamedArtifact("Mantle of Stars");
+			Rogue_AddUmbral(5, false);
 			Rogue_AddIngots(-12);
 		}
 		case 1:
@@ -959,18 +971,121 @@ public void Rogue_Encounter_Library_Of_Lixandria_Vote(const Vote vote, int index
 	{
 		case 0:
 		{
-			CPrintToChatAll("%t", "Book of Weakness Conlusion");
+			CPrintToChatAll("%t", "Book of Weakness Conclusion");
 			Rogue_GiveNamedArtifact("Book of Weakness");
 		}
 		case 1:
 		{
-			CPrintToChatAll("%t", "Book of Nature Conlusion");
+			CPrintToChatAll("%t", "Book of Nature Conclusion");
 			Rogue_GiveNamedArtifact("Book of Nature");
 		}
 		case 2:
 		{
-			CPrintToChatAll("%t", "Book of Liver Optimisation Conlusion");
+			CPrintToChatAll("%t", "Book of Liver Optimisation Conclusion");
 			Rogue_GiveNamedArtifact("Book of Liver Optimisation");
 		}
 	}
+}
+
+public float Rogue_Encounter_OmegaVhxis()
+{
+	ArrayList list = Rogue_CreateGenericVote(Rogue_Vote_OmegaVhxis_Vote, "Omega and Vhxis Title");
+	Vote vote;
+
+	strcopy(vote.Name, sizeof(vote.Name), "Omega and Vhxis Accept");
+	strcopy(vote.Desc, sizeof(vote.Desc), "Omega and Vhxis Accept Desc");
+	list.PushArray(vote);
+	
+	strcopy(vote.Name, sizeof(vote.Name), "Omega and Vhxis Decline");
+	strcopy(vote.Desc, sizeof(vote.Desc), "Omega and Vhxis Decline Desc");
+	list.PushArray(vote);
+
+	Rogue_StartGenericVote(20.0);
+
+	return 25.0;
+}
+
+static int OmegaYappingVhxisGroupChat;
+
+public void Rogue_Vote_OmegaVhxis_Vote(const Vote vote, int index)
+{
+	switch(index)
+	{
+		case 0:
+		{
+			CPrintToChatAll("%t", "Omega and Vhxis Accept Conlusion");
+			Rogue_GiveNamedArtifact("Omega's Assistance");
+			Rogue_GiveNamedArtifact("Vhxis' Assistance");
+			Rogue_StartThisBattle(5.0);
+			OmegaYappingVhxisGroupChat = GetRandomInt(0,1);
+			CreateTimer(5.0, Timer_OmegaVhxisYapping, 1);
+		}
+		case 1:
+		{
+			CPrintToChatAll("%t", "Omega and Vhxis Decline Conlusion");
+			GiveCash(8000);
+		}
+	}
+}
+static Action Timer_OmegaVhxisYapping(Handle timer, int progress)
+{
+	switch(OmegaYappingVhxisGroupChat)
+	{
+		case 0:
+		{
+			switch(progress)
+			{
+				case 1:
+				{
+					CPrintToChatAll("{gold}Omega{default}: Alright Vhxis, let's kick some ass, I'm surprised that these goons still associate themselves with that traitor.");
+				}
+				case 2:
+				{
+					CPrintToChatAll("{purple}Vhxis{default}: Of course, of course... wait a minute, traitor? What traitor?");
+				}
+				case 3:
+				{
+					CPrintToChatAll("{gold}Omega{default}: You know, Whiteflower, the jackass? His whole big deal being his army?");
+				}
+				case 4:
+				{
+					CPrintToChatAll("{purple}Vhxis{default}: That name doesn't ring a bell, we should probably deal with these guys first and get to the throne. You can tell me more once all of this blows over.");
+				}
+				case 5:
+				{
+					CPrintToChatAll("{gold}Omega{default}: Not a bad idea. It's a long story anyway.");
+					return Plugin_Stop;
+				}
+			}
+		}
+		case 1:
+		{
+			switch(progress)
+			{
+				case 1:
+				{
+					CPrintToChatAll("{purple}Vhxis{default}: Damn, where do these guys keep on coming from?");
+				}
+				case 2:
+				{
+					CPrintToChatAll("{gold}Omega{default}: I know right? I think I underestimated the amount of people that would devote their lives to Whiteflower.");
+				}
+				case 3:
+				{
+					CPrintToChatAll("{purple}Vhxis{default}: To...who? That name doesn't seem familiar to me.");
+				}
+				case 4:
+				{
+					CPrintToChatAll("{gold}Omega{default}: Shit, you don't know who Whiteflower is? I should tell you more once we take care of business at the throne. We're a little bit preoccupied right now.");
+				}
+				case 5:
+				{
+					CPrintToChatAll("{purple}Vhxis{default}: Right you are.");
+					return Plugin_Stop;
+				}
+			}
+		}
+	}
+	CreateTimer(6.5, Timer_OmegaVhxisYapping, progress + 1);
+	return Plugin_Continue;
 }

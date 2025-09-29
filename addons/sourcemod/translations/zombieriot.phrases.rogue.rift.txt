@@ -60,7 +60,7 @@
 	}
 	"Rift of Emptiness Desc"
 	{
-		"en"	"{red}Voidstones no longer drop from battles"
+		"en"	"{red}Voidstones have a much lower dropchance."
 	}
 	"Rift of Emptiness Lore"
 	{
@@ -72,7 +72,7 @@
 	}
 	"Rift of Darkness Desc"
 	{
-		"en"	"{red}Void enemies gain +35％ health and +25％ damage {green}but all other enemies lose -15％ health and -10％ damage"
+		"en"	"{red}Void & Umbral enemies gain +15％ health and +10％ damage {green}but all other enemies lose -10％ health and -5％ damage"
 	}
 	"Rift of Darkness Lore"
 	{
@@ -258,7 +258,7 @@
 	}
 	"Rift Level 3 Desc"
 	{
-		"en"	"{red}Enemy stats per chapter +10％, start with Fractured voidstone, rift events can occur more often"
+		"en"	"{red}Enemy stats per chapter +4％, start with Fractured voidstone, rift events can occur more often"
 	}
 	"Rift Level 2"
 	{
@@ -266,7 +266,7 @@
 	}
 	"Rift Level 2 Desc"
 	{
-		"en"	"{red}Enemy stats per chapter +5％ {blue}and other possibilities"
+		"en"	"{red}Enemy stats per chapter +2％ {blue}and other possibilities"
 	}
 	"Rift Level 1"
 	{
@@ -322,7 +322,7 @@
 	}
 	"Hand of Buckler Desc"
 	{
-		"en"	"Drop by drop, bit by bit. It is unstoppable.\n{green}''Hexing Magic'' weapons deal 3％ (1％ against bosses) {yellow}(affected by scaling) {green}magic damage based on the enemy's current health"
+		"en"	"Drop by drop, bit by bit. It is unstoppable.\n{green}''Hexing Magic'' weapons deal 3％ (1％ against bosses) {yellow}(affected by scaling) and upto 3x base damage only. {green}magic damage based on the enemy's current health"
 	}
 	"Hand of Undulation"
 	{
@@ -444,6 +444,14 @@
 	{
 		"en"	"Reila joins you."
 	}
+	"Umbral Hate"
+	{
+		"en"	"Umbral Hate"
+	}
+	"Umbral Hate Desc"
+	{
+		"en"	"{crimson}You have seriously pissed off the Umbrals, they are enraged and always appear now, you cannot gain umbral affinity anymore."
+	}
 	"Gift of Remembrance"
 	{
 		"en"	"Gift of Remembrance"
@@ -562,7 +570,7 @@
 	}
 	"Painful Happiness Desc"
 	{
-		"en"	"He enters the unknown, his weight is gone.\n{green}Enemy health and movement speed decreased by -15％"
+		"en"	"He enters the unknown, his weight is gone.\n{green}Enemy health and movement speed decreased by -9％"
 	}
 	"Gravity Defying Machine"
 	{
@@ -618,7 +626,7 @@
 	}
 	"Unripe Yearning Desc"
 	{
-		"en"	"These incomplete thoughts cling to their creators.\n{green}Allies recieve +1％ max health per Umbral Affinity"
+		"en"	"These incomplete thoughts cling to their creators.\n{green}Allies receive +0.4％ max health per Umbral Affinity"
 	}
 	"Eye of Fortune"
 	{
@@ -634,7 +642,7 @@
 	}
 	"Thoughts Catcher Desc"
 	{
-		"en"	"Sorting truth from falsehood takes time, and some ideas will invariably scatter.\n{green}Obtain 2 Australium Ingots when consuming an item at a Gateway"
+		"en"	"Sorting truth from falsehood takes time, and some ideas will invariably scatter.\n{green}Obtain 3 Australium Ingots when consuming an item at a Gateway"
 	}
 	"Scales of Avarice"
 	{
@@ -682,7 +690,7 @@
 	}
 	"Soul Binding Bone Desc"
 	{
-		"en"	"The elder Ruinan made a cage with his own bones to seal his kin within.\n{green}Allies recieve +0.5％ damage per Umbral Affinity"
+		"en"	"The elder Ruinan made a cage with his own bones to seal his kin within.\n{green}Allies receive +0.4％ damage per Umbral Affinity"
 	}
 
 	"Pots In The Ground"
@@ -1016,6 +1024,10 @@
 	{
 		"en"	"{crimson}He's pissed."
 	}
+	"Familiar Faces"
+	{
+		"en"	"Familiar Faces"
+	}
 	"Crystalized Warped Subjects"
 	{
 		"en"	"Crystalized Warped Subjects"
@@ -1148,7 +1160,7 @@
 	}
 	"Holy Blessing Desc"
 	{
-		"en"	"{green}Grigori's Blessing now heals up to full health"
+		"en"	"{green}Grigori's Blessing now heals up to full health and heals 2x as much."
 	}
 	
 	"Ruina'n Magic Factory"
@@ -1260,7 +1272,7 @@
 	}
 	"Mazeat Saves Desc"
 	{
-		"en"	"Mazeat is a safe place.\n{green}Non-void enemies have -15％ health and damage"
+		"en"	"Mazeat is a safe place.\n{green}Non-Umbrals enemies have -10％ health and damage"
 	}
 	"Mazeat Lives"
 	{
@@ -1268,7 +1280,7 @@
 	}
 	"Mazeat Lives Desc"
 	{
-		"en"	"Mazeat is a place to live.\n{green}Non-void enemies have -10％ movement speed"
+		"en"	"Mazeat is a place to live.\n{green}Non-Umbrals enemies have -10％ movement speed"
 	}
 	"Mazeat Falls"
 	{
@@ -1276,7 +1288,7 @@
 	}
 	"Mazeat Falls Desc"
 	{
-		"en"	"Mazeat was.\n{green}Non-void enemies have -30％ health and damage and receive +100％ elemental damage"
+		"en"	"Mazeat was.\n{green}Non-Umbrals enemies have -35％ health and damage and receive +100％ elemental damage"
 	}
 	"Finale Encounter Lore"
 	{
@@ -1477,13 +1489,13 @@
 	{
 		"en" "⚠ Slaves Controlled"
 	}
-	"Bladedance Surviors"
+	"Bladedance survivors"
 	{
-		"en" "⚔ Bladedance Surviors"
+		"en" "⚔ Bladedance survivors"
 	}
-	"Bladedance Surviors!"
+	"Bladedance survivors!"
 	{
-		"en" "⚠ Bladedance Surviors"
+		"en" "⚠ Bladedance survivors"
 	}
 	"Rescued W.F. Soldiers"
 	{
@@ -1589,6 +1601,10 @@
 	{
 		"en" "⚔ Strange Gateway"
 	}
+	"Hitman III!"
+	{
+		"en" "⚠ Hitman III"
+	}
 
 	"Crystalized Warped Subjects Title"
 	{
@@ -1628,7 +1644,7 @@
 	}
 	"Book of Nature Desc"
 	{
-		"en"	"A book explaining how the Umbrals act, even if basic.\n{green}Umbral Affinity increased by 40, cannot lose Umbral Affinity anymore."
+		"en"	"A book explaining how the Umbrals act, even if basic.\n{green}Umbral Affinity increased by 40, cannot lose Umbral Affinity anymore, ''Umbral Hate'' is ignored, you can gain umbral affinity again."
 	}
 	"Book of Nature Conclusion"
 	{
@@ -1658,5 +1674,85 @@
 	{
 		"en"	"Experiencing cold water made your brace the book of true evils.\n{green}Gain all perks at once."
 	}
+	"Hold Out Normal"
+	{
+		"en"	"Standard"
+	}
+	"Hold Out Normal Desc"
+	{
+		"en"	"The rifts keep coming, stand out ground. Mercenaries are already heading out, we're the second line of defense."
+	}
+	"Hold Out Creep"
+	{
+		"en"	"Void Creep"
+	}
+	"Hold Out Creep Desc"
+	{
+		"en"	"Our base doesn't look so good, but it's what we got.\n{red}Harder base position"
+	}
+	"Hold Out Hard"
+	{
+		"en"	"Chaos Intrusion"
+	}
+	"Hold Out Hard Desc"
+	{
+		"en"	"They keep coming.\n{red}Rare enemies have a higher chance of appearing and applies Chaos Intrusion difficulty"
+	}
+	"Hold Out Hard Creep"
+	{
+		"en"	"Death World"
+	}
+	"Hold Out Hard Creep Desc"
+	{
+		"en"	"Biters.\n{red}Harder base position, rare enemies have a higher chance of appearing, applies Chaos Intrusion difficulty"
+	}
+	"Hold Out Survive"
+	{
+		"en"	"Hang in there! The mercenaries are coming back!"
+	}
+	"Expidonsa Barracks"
+	{
+		"en"	"Expidonsa Barracks"
+	}
+	"Expidonsa Barracks Desc"
+	{
+		"en"	"A construct that summons Expidonsa allies."
+	}
+	"Ruina Barracks"
+	{
+		"en"	"Ruina Barracks"
+	}
+	"Ruina Barracks Desc"
+	{
+		"en"	"A construct that summons Ruina allies."
+	}
+	"Ally Assistance"
+	{
+		"en"	"Ally Assistance"
+	}
+	"Ally Assistance Desc"
+	{
+		"en"	"Unlocks a new construct and new allies will join you."
+	}
 
+	"Omega and Vhxis Title"
+	{
+		"en"	"You spot two people in the distance that appear to be eerily familiar to you, they seem to be fighting off a massive horde of W.F soldiers.\nThey don't seem to be having trouble, but maybe we could help them regardless?"
+	}
+	"Omega's Assistance"
+	{
+		"en"	"Omega's Assistance"
+	}
+	"Omega's Assistance Desc"
+	{
+		"en"	"{yellow} ''Huh.''"
+	}
+	"Vhxis' Assistance"
+	{
+		"en"	"Vhxis' Assistance"
+	}
+	"Vhxis' Assistance Desc" 
+	{
+		"en"	"{purple} ''You again?''"
+	}
 }
