@@ -57,6 +57,7 @@ enum
 	Attrib_FinalBuilder = 4051,
 	Attrib_GlassBuilder = 4052,
 	Attrib_WildingenBuilder = 4053,
+	Attrib_TauntRangeValue = 4054,
 }
 
 StringMap WeaponAttributes[MAXENTITIES + 1];
@@ -72,7 +73,7 @@ bool Attribute_ServerSide(int attribute)
 
 		Various attributes that are not needed as actual attributes.
 		*/
-		case 526,733, 309, 777, 701, 805, 180, 830, 785, 405, 527, 319, 286,287 , 95 , 93,8:
+		case 526,733, 309, 777, 701, 805, 180, 830, 785, 405, 527, 319, 286,287 , 95 , 93,8, 734:
 		{
 			return true;
 		}
@@ -89,7 +90,19 @@ bool Attribute_IntAttribute(int attribute)
 {
 	switch(attribute)
 	{
-		case 834, 866, 867, Attrib_BarracksSupplyRate, Attrib_FinalBuilder, Attrib_GlassBuilder, Attrib_WildingenBuilder:
+		case 314, 834, 866, 867, Attrib_BarracksSupplyRate, Attrib_FinalBuilder, Attrib_GlassBuilder, Attrib_WildingenBuilder:
+			return true;
+	}
+
+	return false;
+}
+
+bool Attribute_DontSaveAsIntAttribute(int attribute)
+{
+	switch(attribute)
+	{
+		//this attrib is a float, but saves as an int, for stuff thats additional, not multi.
+		case 314, 142:
 			return true;
 	}
 
@@ -175,11 +188,12 @@ bool Attributes_Set(int entity, int attrib, float value, bool DoOnlyTf2Side = fa
 			return false;
 	}
 	
-	if(Attribute_IntAttribute(attrib))
+	if(Attribute_IntAttribute(attrib) && !Attribute_DontSaveAsIntAttribute(attrib))
 	{
 		TF2Attrib_SetByDefIndex(entity, attrib, view_as<float>(RoundFloat(value)));
 		return true;
 	}
+	
 	
 	TF2Attrib_SetByDefIndex(entity, attrib, value);
 	return true;
