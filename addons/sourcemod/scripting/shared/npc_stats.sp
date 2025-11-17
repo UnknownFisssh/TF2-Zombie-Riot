@@ -5180,12 +5180,6 @@ stock bool IsValidEnemy(int index, int enemy, bool camoDetection=false, bool tar
 				}
 			}
 
-#if defined RTS
-			if(RTS_IsEntAlly(index, enemy))
-			{
-				return false;
-			}
-#else
 			if(!b_NpcIsTeamkiller[index] && GetTeam(index) == GetTeam(enemy))
 			{
 #if defined RPG
@@ -5197,7 +5191,6 @@ stock bool IsValidEnemy(int index, int enemy, bool camoDetection=false, bool tar
 				return false;
 #endif
 			}
-#endif
 
 #if defined RPG
 			if(GetTeam(index) != GetTeam(enemy))
@@ -6181,11 +6174,6 @@ public bool TraceRayCanSeeAllySpecific(int entity,int mask,any data)
 	if(b_ThisEntityIgnored[entity])
 	{
 		return false;
-	}
-	
-	if(entity == Entity_to_Respect)
-	{
-		return true;
 	}
 	
 	return false;
@@ -7310,7 +7298,7 @@ static char m_cGibModelMetal[][] =
 	"models/gibs/scanner_gib01.mdl",
 	"models/gibs/metal_gib2.mdl"
 };
-void Npc_DoGibLogic(int pThis, float GibAmount = 1.0)
+void Npc_DoGibLogic(int pThis, float GibAmount = 1.0, bool forcesilentMode = false)
 {
 	CClotBody npc = view_as<CClotBody>(pThis);
 	if(npc.m_iBleedType == 0)
@@ -7328,6 +7316,9 @@ void Npc_DoGibLogic(int pThis, float GibAmount = 1.0)
 		Limit_Gibs = true;
 	}
 	if(EnableSilentMode)
+		Limit_Gibs = true;
+
+	if(forcesilentMode)
 		Limit_Gibs = true;
 
 	if(npc.m_iBleedType == BLEEDTYPE_METAL)
@@ -12035,15 +12026,25 @@ int NpcColourCosmetic_ViaPaint(int entity, int color, bool halloweenSpell = fals
 	// To avoid creating many edicts, only create one econ entity per color, then reuse it in case other cosmetics use the same color
 	
 	WearableColor wearableColor;
+	wearableColor.wearableRef = INVALID_ENT_REFERENCE;
+	
 	int index = h_ColoredWearables.FindValue(color);
 	if (index != -1)
 	{
-		// Found an econ entity using this color, reuse it
 		h_ColoredWearables.GetArray(index, wearableColor);
-		
-		SetEntityOwner(entity, wearableColor.wearableRef);
-		wearableColor.entities.Push(EntIndexToEntRef(entity));
-		return wearableColor.wearableRef;
+		if (IsValidEntity(wearableColor.wearableRef))
+		{
+			// Found an econ entity using this color, reuse it
+			SetEntityOwner(entity, wearableColor.wearableRef);
+			wearableColor.entities.Push(EntIndexToEntRef(entity));
+			return wearableColor.wearableRef;
+		}
+		else
+		{
+			// This can happen if the wearable was deleted by something out of our control
+			// and the color handler hasn't been updated yet
+			return -1;
+		}
 	}
 	
 	// We have yet to use this color, create an econ entity for this
@@ -12072,6 +12073,12 @@ int NpcColourCosmetic_ViaPaint(int entity, int color, bool halloweenSpell = fals
 
 Action NPCStats_Timer_HandlePaintedWearables(Handle timer)
 {
+	NPCStats_HandlePaintedWearables();
+	return Plugin_Continue;
+}
+
+void NPCStats_HandlePaintedWearables()
+{
 	// Check if each color is still being used by a cosmetic
 	for (int i = h_ColoredWearables.Length - 1; i >= 0; i--)
 	{
@@ -12092,11 +12099,11 @@ Action NPCStats_Timer_HandlePaintedWearables(Handle timer)
 		// None of the cosmetics using this color are valid, we can erase this color from the list
 		if (!foundValidEntity)
 		{
-			RemoveEntity(wearableColor.wearableRef);
+			if (IsValidEntity(wearableColor.wearableRef))
+				RemoveEntity(wearableColor.wearableRef);
+			
 			delete wearableColor.entities;
 			h_ColoredWearables.Erase(i);
 		}
 	}
-	
-	return Plugin_Continue;
 }
