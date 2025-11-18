@@ -36,7 +36,7 @@ static float QuadSinceLastRemove[MAXPLAYERS]={0.0, ...};
 #define PURGE_ENERGY_CLOSE_RANGE 400.0
 #define PURGE_ENERGY_CLOSE_RANGE_MULTI_GAIN 1.2
 #define PURGE_ENERGY_SHOTGUN 5.0
-#define PURGE_ENERGY_RIFLE 0.5
+#define PURGE_ENERGY_RIFLE 1.0
 
 #define PURGE_RAM_BASE_DMG 200.0
 #define PURGE_RAM_RADIUS 150.0
@@ -46,8 +46,8 @@ static float QuadSinceLastRemove[MAXPLAYERS]={0.0, ...};
 
 #define PURGE_QUADLAUNCHER_MAX_HOLD 10.0
 
-#define PURGE_ANNAHILATOR_ENERGY_REQUIRE 300.0
-#define PURGE_QUAD_LAUNCHER_ENERGY_REQUIRE 500.0
+#define PURGE_ANNAHILATOR_ENERGY_REQUIRE 250.0
+#define PURGE_QUAD_LAUNCHER_ENERGY_REQUIRE 400.0
 
 #define PURGE_QUADLAUNCHER_COOLDOWN 80.0
 #define PURGE_ANNAHILATOR_COOLDOWN 90.0
@@ -223,15 +223,15 @@ public void PurgeKit_HUD(int client, int weapon, bool forced)
 		if(Attributes_Get(weapon, Attrib_PapNumber, 1.0) < 2.0)
 			PrintHintText(client, "Purge System Activated.\nEnergy: [%.0f/%.0f]", fl_KitPurge_Energy[client], PURGE_MAX_ENERGY);
 		else if(Attributes_Get(weapon, Attrib_PapNumber, 1.0) < 4.0)
-			PrintHintText(client, "Purge System Activated.\nEnergy: [%.0f/%.0f]\nAnnahilator:%s", fl_KitPurge_Energy[client], PURGE_MAX_ENERGY, annahiStat);
+			PrintHintText(client, "Purge System Activated.\nEnergy: [%.0f/%.0f]\nAnnihilator:%s", fl_KitPurge_Energy[client], PURGE_MAX_ENERGY, annahiStat);
 		else
-			PrintHintText(client, "Purge System Activated.\nEnergy: [%.0f/%.0f]\nAnnahilator:%s\nQuad-Launcher:%s", fl_KitPurge_Energy[client], PURGE_MAX_ENERGY, annahiStat, quadStat);
+			PrintHintText(client, "Purge System Activated.\nEnergy: [%.0f/%.0f]\nAnnihilator:%s\nQuad-Launcher:%s", fl_KitPurge_Energy[client], PURGE_MAX_ENERGY, annahiStat, quadStat);
 		fl_KitPurge_NextHUD[client] = GetGameTime() + 0.4;
 	}
 }
 
 public void Weapon_Purging_Rampager(int client, int weapon, bool crit, int slot)
-{//from origional rampager
+{//from original rampager
 	if(weapon >= MaxClients)
 	{
 		weapon_id[client] = EntIndexToEntRef(weapon);
@@ -376,9 +376,18 @@ public void Weapon_Purging_Rampager_R(int client, int weapon, bool crit, int slo
 		ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Ability has cooldown", Ability_CD);	
 		return;
 	}
+	if(!(GetClientButtons(client) & IN_DUCK) && NeedCrouchAbility(client))
+	{
+		ClientCommand(client, "playgamesound items/medshotno1.wav");
+		SetDefaultHudPosition(client);
+		SetGlobalTransTarget(client);
+		ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Crouch for ability");	
+		return;
+	}
 	
 	if(fl_KitPurge_Energy[client] < PURGE_QUAD_LAUNCHER_ENERGY_REQUIRE && !CvarInfiniteCash.BoolValue)
 	{
+		ClientCommand(client, "playgamesound items/medshotno1.wav");
 		SetDefaultHudPosition(client);
 		SetGlobalTransTarget(client);
 		ShowSyncHudText(client,  SyncHud_Notifaction, "You need %.0f energy to take out QuadLauncher!", PURGE_QUAD_LAUNCHER_ENERGY_REQUIRE);
@@ -427,9 +436,18 @@ public void Weapon_Purging_Crusher_R(int client, int weapon, bool crit, int slot
 		ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Ability has cooldown", Ability_CD);	
 		return;
 	}
+	if(!(GetClientButtons(client) & IN_DUCK) && NeedCrouchAbility(client))
+	{
+		ClientCommand(client, "playgamesound items/medshotno1.wav");
+		SetDefaultHudPosition(client);
+		SetGlobalTransTarget(client);
+		ShowSyncHudText(client,  SyncHud_Notifaction, "%t", "Crouch for ability");	
+		return;
+	}
 	
 	if(fl_KitPurge_Energy[client] < PURGE_ANNAHILATOR_ENERGY_REQUIRE && !CvarInfiniteCash.BoolValue)
 	{
+		ClientCommand(client, "playgamesound items/medshotno1.wav");
 		SetDefaultHudPosition(client);
 		SetGlobalTransTarget(client);
 		ShowSyncHudText(client,  SyncHud_Notifaction, "You need %.0f energy to take out Annihilator!", PURGE_ANNAHILATOR_ENERGY_REQUIRE);
@@ -859,17 +877,20 @@ public Action Weapon_Purging_Crush_Think(Handle h, DataPack pack)
 		return Plugin_Continue;
 	}
 	
-	TF2_RemoveCondition(client, TFCond_LostFooting);
-	TF2_RemoveCondition(client, TFCond_AirCurrent);
-	//SetEntityGravity(client, 1.0);
-	
-	if(GetAmmo(client, 14) < 10)
-		SetAmmo(client, 14, 10);
-	
-	Store_RemoveSpecificItem(client, "Purging Grinder");
-	TF2_RemoveItem(client, weapon);
-	FakeClientCommandEx(client, "use tf_weapon_shotgun_hwg");
-	
+	if(IsValidClient(client))
+	{
+		TF2_RemoveCondition(client, TFCond_LostFooting);
+		TF2_RemoveCondition(client, TFCond_AirCurrent);
+		//SetEntityGravity(client, 1.0);
+		
+		if(GetAmmo(client, 14) < 10)
+			SetAmmo(client, 14, 10);
+		
+		Store_RemoveSpecificItem(client, "Purging Grinder");
+		if(IsValidEntity(weapon))
+			TF2_RemoveItem(client, weapon);
+		FakeClientCommandEx(client, "use tf_weapon_shotgun_hwg");
+	}
 	delete pack;
 	return Plugin_Stop;
 }
@@ -955,3 +976,4 @@ void KitPurgeGiveAttributesData(DataPack pack)
 		}
 	}
 }
+
