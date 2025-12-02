@@ -2220,14 +2220,14 @@ void SetProjectileSpeed(int projectile, float speed, float angles[3])
 }
 static void ReplaceProjectileParticle(int projectile, const char[] particle_string)
 {
-	int particle = EntRefToEntIndex(i_rocket_particle[projectile]);
+	int particle = EntRefToEntIndex(i_WandParticle[projectile]);
 	if(IsValidEntity(particle))
 		RemoveEntity(particle);
 
 	float ProjLoc[3];
 	WorldSpaceCenter(projectile, ProjLoc);
 	particle = ParticleEffectAt(ProjLoc, particle_string, 0.0); //Inf duartion
-	i_rocket_particle[projectile]= EntIndexToEntRef(particle);
+	i_WandParticle[projectile]= EntIndexToEntRef(particle);
 	SetParent(projectile, particle);	
 }
 
@@ -2761,7 +2761,7 @@ static void Fractal_Attack(int iNPC, float VecTarget[3], float dmg, float speed,
 		Ruina_Color(color, i_current_wave[iNPC]);
 		Twirl npc = view_as<Twirl>(iNPC);
 		int beam = ConnectWithBeamClient(npc.m_iWearable1, Proj, color[0], color[1], color[2], f_start, f_end, amp, LASERBEAM);
-		i_rocket_particle[Proj] = EntIndexToEntRef(beam);
+		i_WandParticle[Proj] = EntIndexToEntRef(beam);
 		DataPack pack;
 		CreateDataTimer(0.1, Laser_Projectile_Timer, pack, TIMER_FLAG_NO_MAPCHANGE|TIMER_REPEAT);
 		pack.WriteCell(EntIndexToEntRef(iNPC));
@@ -2782,11 +2782,11 @@ static void Func_On_Proj_Touch(int entity, int other)
 		return;
 	}
 
-	int beam = EntRefToEntIndex(i_rocket_particle[entity]);
+	int beam = EntRefToEntIndex(i_WandParticle[entity]);
 	if(IsValidEntity(beam))
 		RemoveEntity(beam);
 
-	i_rocket_particle[entity] = INVALID_ENT_REFERENCE;
+	i_WandParticle[entity] = INVALID_ENT_REFERENCE;
 	
 	float ProjectileLoc[3];
 	GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", ProjectileLoc);
@@ -3632,7 +3632,7 @@ static Action IonicFracture_ProjectileThink(int entity)
 		TeleportEntity(entity, NULL_VECTOR, NULL_VECTOR, {0.0, 0.0, 0.0});
 		if(npc.m_flIonicFractureHoverTimer < GameTime)
 		{
-			int particle = EntRefToEntIndex(i_rocket_particle[entity]);
+			int particle = EntRefToEntIndex(i_WandParticle[entity]);
 			if(IsValidEntity(particle))
 				RemoveEntity(particle);
 
@@ -4181,7 +4181,7 @@ static void Twirl_Ruina_Weapon_Lines(Twirl npc, int client)
 	switch(i_CustomWeaponEquipLogic[weapon])
 	{
 		case WEAPON_MAGNESIS: switch(GetRandomInt(0,1)) 			{case 0: Format(Text_Lines, sizeof(Text_Lines), "I've had it up to here MISTER {gold}%N{snow}.", client); 												case 1: Format(Text_Lines, sizeof(Text_Lines), "How would you feel {gold}%N{snow} if I grabbed YOU?", client);}
-		case WEAPON_YAKUZA: switch(GetRandomInt(0,1)) 				{case 0: Format(Text_Lines, sizeof(Text_Lines), "Oh god another one. YOUR STRENGTH {gold}%N{snow} IS FAKE", client); 									case 1: Format(Text_Lines, sizeof(Text_Lines), "i would prefer if your arms did not touch me mr {gold}%N{snow}", client);}
+		case WEAPON_YAKUZA: switch(GetRandomInt(0,1)) 				{case 0: Format(Text_Lines, sizeof(Text_Lines), "Oh god another one. YOUR STRENGTH {gold}%N{snow} IS FAKE", client); 									case 1: Format(Text_Lines, sizeof(Text_Lines), "I would prefer if your arms did not touch me mr {gold}%N{snow}.", client);}
 		
 		case WEAPON_KIT_BLITZKRIEG_CORE: switch(GetRandomInt(0,1)) 	{case 0: Format(Text_Lines, sizeof(Text_Lines), "Oh my, {gold}%N{snow}, you're trying to copy the Machine?", client); 									case 1: Format(Text_Lines, sizeof(Text_Lines), "Ah, how foolish {gold}%N{snow} Blitzkrieg was a poor mistake to copy...", client);}	//IT ACTUALLY WORKS, LMFAO
 		case WEAPON_COSMIC_TERROR: switch(GetRandomInt(0,1)) 		{case 0: Format(Text_Lines, sizeof(Text_Lines), "Ah, the Cosmic Terror, haven't seen that relic in a long while"); 										case 1: Format(Text_Lines, sizeof(Text_Lines), "The moon is a deadly laser, am I right {gold}%N{snow}?",client);}
