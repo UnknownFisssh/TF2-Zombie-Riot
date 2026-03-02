@@ -210,7 +210,7 @@ static Action Timer_DialogueNewEnd(Handle timer, int part)
 			if(Dungeon_Mode())
 				CPrintToChatAll("{crimson}This takes place in the first construction, it is only placed here for gameplay reasons.");
 			
-			CPrintToChatAll("{black}???{default}: Hah, I knew you'll fall for it.");
+			CPrintToChatAll("{black}???{default}: Hah, I knew you'd fall for it.");
 		}
 		case 1:
 		{
@@ -226,7 +226,7 @@ static Action Timer_DialogueNewEnd(Handle timer, int part)
 		}
 		case 4:
 		{
-			CPrintToChatAll("{black}???{default}: die you damn forerunners.");
+			CPrintToChatAll("{black}???{default}: Die you damn forerunners.");
 		}
 		default:
 		{
@@ -368,7 +368,7 @@ public void Xeno_Resurgance_Enemy(int entity)
 		return;
 
 	if(view_as<CClotBody>(entity).m_iBleedType != BLEEDTYPE_XENO)
-		ApplyStatusEffect(entity, entity, "Xeno Infection", 9999.9);
+		ApplyStatusEffect(entity, entity, "Xeno Infection Buff", 9999.9);
 	else
 		ApplyStatusEffect(entity, entity, "Xeno Infection Buff Only", 9999.9);
 }

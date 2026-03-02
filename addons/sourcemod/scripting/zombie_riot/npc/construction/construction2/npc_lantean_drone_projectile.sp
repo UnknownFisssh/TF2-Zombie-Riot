@@ -87,10 +87,12 @@ methodmap LanteanProjectile < CClotBody
 		if(StrContains(data, "red") != -1)
 		{
 			npc.m_iWearable1 = ParticleEffectAt_Parent(Origin, "flaregun_energyfield_red", npc.index, "", {0.0,0.0,0.0});
+			npc.m_iWearable2 = ParticleEffectAt_Parent(Origin, "raygun_projectile_red_trail", npc.index, "", {0.0,0.0,0.0});
 		}
 		else if(StrContains(data, "blue") != -1)
 		{
 			npc.m_iWearable1 = ParticleEffectAt_Parent(Origin, "flaregun_energyfield_blue", npc.index, "", {0.0,0.0,0.0});
+			npc.m_iWearable2 = ParticleEffectAt_Parent(Origin, "raygun_projectile_blue_trail", npc.index, "", {0.0,0.0,0.0});
 		}
 		//is always static
 		AddNpcToAliveList(npc.index, 1);
@@ -136,12 +138,12 @@ methodmap LanteanProjectile < CClotBody
 		npc.m_flGetClosestTargetTime = 0.0;
 		npc.StopPathing();	//don't path.
 
-		fl_LanteanDrone_TurnSpeed			 		= 2.0;
-		fl_LanteanDrone_Acceleration 				= 5.0;
-		fl_LanteanDrone_Deceleration				= 2.5;
-		fl_LanteanDrone_HyperDecelerationNearDist 	= 500.0;
-		fl_LanteanDrone_HyperDecelerationSpeed 		= 10.0;
-		fl_LanteanDrone_HyperDecelerationMax 		= 0.25;
+		npc.m_flTurnSpeed				= 13.2;
+		npc.m_flAcceleration			= 33.0;
+		npc.m_flDecceleration			= 16.5;
+		npc.m_flHyperDeccelNearDist		= 500.0;
+		npc.m_flHyperDeccelSpeed		= 66.0;
+		npc.m_flHyperDeccelMax			= 0.25;
 
 		//detection
 		SDKHook(npc.index, SDKHook_Think, 		ProjectileBaseThink);
@@ -388,7 +390,7 @@ static void LanteanNPC_SimulateTouch(int iNPC, int target)
 
 	Set_HitDetectionCooldown(npc.index, target, GetGameTime() + 1.0);
 	npc.m_iPenetrationAmmount++;
-	float damage = 25.0 * (npc.m_bUseRaidmodeScaling ? RaidModeScaling : 10.0);
+	float damage = 10.0 * (npc.m_bUseRaidmodeScaling ? RaidModeScaling : 10.0);
 	int attacker = npc.m_iAttacker;
 	if(!IsValidEntity(attacker))
 		attacker = npc.index;
@@ -428,7 +430,6 @@ static void LanteanNPC_ClotThink(int iNPC)
 		DeleteLanteanProjectile(npc.index);
 		return;
 	}
-	npc.HeadingControl();
 	
 	npc.Update();
 
@@ -436,6 +437,7 @@ static void LanteanNPC_ClotThink(int iNPC)
 		return;
 	
 	npc.m_flNextThinkTime = GameTime + 0.1;
+	npc.HeadingControl();
 
 	npc.m_iTarget = npc.iGetTarget();
 
@@ -450,6 +452,8 @@ static void LanteanNPC_Death(int iNPC)
 
 	if(IsValidEntity(npc.m_iWearable1))
 		RemoveEntity(npc.m_iWearable1);
+	if(IsValidEntity(npc.m_iWearable2))
+		RemoveEntity(npc.m_iWearable2);
 
 	SetEntityRenderMode(npc.index, RENDER_NORMAL);
 	SetEntityRenderColor(npc.index, 255, 255, 255, 255);

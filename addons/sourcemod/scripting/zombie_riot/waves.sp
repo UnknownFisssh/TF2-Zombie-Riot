@@ -899,7 +899,11 @@ void Waves_SetupVote(KeyValues map, bool modifierOnly = false)
 	{
 		// ZS-Classic Gamemode
 		if(kv.GetNum("classicmode"))
-			Classic_Enable();
+			Classic_Enable(true);
+		else
+		{
+			Classic_Enable(false);
+		}
 	}
 
 	bool autoSelect = CvarAutoSelectWave.BoolValue;	
@@ -956,9 +960,9 @@ void Waves_SetupVote(KeyValues map, bool modifierOnly = false)
 
 		if(limit > 0)
 		{
-			for(int length = Voting.Length; length > limit; length--)
+			while (Voting.Length > limit)
 			{
-				Voting.Erase(MapSeed % length);
+				Voting.Erase(GetURandomInt() % Voting.Length);
 			}
 
 			if(!autoSelect && !FileNetwork_Enabled())
@@ -1290,6 +1294,7 @@ void Waves_CacheWaves(KeyValues kv, bool npcs)
 void WavesDeleteSet(int ArrayDo = Rounds_Default)
 {
 	Round round;
+	Waves_ClearWaves(ArrayDo);
 	if(Rounds[ArrayDo])
 	{
 		int length = Rounds[ArrayDo].Length;
@@ -2125,10 +2130,10 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 	static int panzer_chance;
 	bool GiveAmmoSupplies = !Dungeon_Mode();
 
-	if(CurrentRound[WaveWhich] < length)
+	if(CurrentRound[WaveWhich] < length || ForceAdvance)
 	{
 		Rounds[WaveWhich].GetArray(CurrentRound[WaveWhich], round);
-		if(++CurrentWave[WaveWhich] < round.Waves.Length)
+		if(++CurrentWave[WaveWhich] < round.Waves.Length && !ForceAdvance)
 		{
 			if(WaveWhich == Rounds_Default)
 				f_FreeplayDamageExtra = 1.0;
@@ -2640,11 +2645,18 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 						}
 					}
 				}
-				
-				Music_EndLastmann();
-				RespawnCheckCitizen();
-				ReviveAll();
-				CheckAlivePlayers();
+				bool RespawnPeople = true;
+				if(ZR_Get_Modifier() == /*PREFIX_ONESTAND*/ 7)
+					if(round.Setup < 1.0)
+						RespawnPeople = false;
+						
+				if(RespawnPeople)
+				{
+					Music_EndLastmann();
+					RespawnCheckCitizen();
+					ReviveAll(_,_,_,ForceAdvance,round.Setup >= 1.0);
+					CheckAlivePlayers();
+				}
 				BlockOtherRaidMusic = false;
 			}
 			if(round.AmmoBoxExtra)
@@ -3001,7 +3013,7 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 		}
 		
 		if(Construction_Mode())	// In Construction: Base raids must be dealt with
-			subWave = !Construction_FinalBattle();
+			subWave = Construction_FinalBattle();
 		/*
 		if(Dungeon_Mode())
 			subWave = !Dungeon_FinalBattle();
@@ -3571,6 +3583,11 @@ void DoGlobalMultiScaling()
 	
 	playercount *= 0.88;
 	playercount *= GetScaledPlayerCountMulti(PlayersIngame);
+
+	//We want to reduce scaling for several gamemodes if its above a certain player counts
+	//this is due to buildings not really scaling past 14 players, or the gameplay being very hectic, this is just to circumvent it a lil
+	if(Dungeon_Mode() || Rogue_Mode())
+		playercount *= GetScaledPlayerCountMulti(PlayersIngame, 0.125);
 
 	float multi = playercount / 4.0;
 	

@@ -427,6 +427,7 @@ void Rogue_MapStart()
 {
 	delete Voting;
 	delete Curses;
+	Rogue_CleanArtifacts();
 	delete Artifacts;
 	delete CurrentCollection;
 	RogueTheme = 0;
@@ -486,6 +487,7 @@ void Rogue_SetupVote(KeyValues kv, const char[] artifactOnly = "")
 	Floor floor;
 
 	delete Curses;
+	Rogue_CleanArtifacts();
 	delete Artifacts;
 	delete CurrentCollection;
 
@@ -870,6 +872,27 @@ void Rogue_StartSetup()	// Waves_RoundStart()
 	}
 }
 
+void Rogue_CleanArtifacts()
+{
+	if(CurrentCollection)
+	{
+		ArrayList list = CurrentCollection;
+		CurrentCollection = null;
+
+		Artifact artifact;
+		int length = list.Length;
+		for(int i; i < length; i++)
+		{
+			Artifacts.GetArray(list.Get(i), artifact);
+			if(artifact.FuncRemove != INVALID_FUNCTION)
+			{
+				Call_StartFunction(null, artifact.FuncRemove);
+				Call_Finish();
+			}
+		}
+		delete list;
+	}
+}
 void Rogue_RoundEnd()
 {
 	delete ProgressTimer;
@@ -3386,16 +3409,16 @@ bool Rogue_UpdateMvMStats()
 								switch(Rogue_GetUmbralLevel())
 								{
 									case 0:	// Most Friendly
-										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinity_best", MVM_CLASS_FLAG_NORMAL|MVM_CLASS_FLAG_ALWAYSCRIT, true);
+										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinitybestv2", MVM_CLASS_FLAG_NORMAL|MVM_CLASS_FLAG_ALWAYSCRIT, true);
 									
 									case 1, 2:
-										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinity_neutral", MVM_CLASS_FLAG_NORMAL, true);
+										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinityneutralv2", MVM_CLASS_FLAG_NORMAL, true);
 									
 									case 3:
-										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinity_bad", MVM_CLASS_FLAG_MINIBOSS, true);
+										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinityneutralv2", MVM_CLASS_FLAG_MINIBOSS, true);
 									
 									default:	// Most Hated
-										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinity_worst", MVM_CLASS_FLAG_MINIBOSS|MVM_CLASS_FLAG_ALWAYSCRIT, true);
+										Waves_SetWaveClass(objective, i, CurrentUmbral, "affinityneutralv2", MVM_CLASS_FLAG_MINIBOSS|MVM_CLASS_FLAG_ALWAYSCRIT, true);
 								}
 
 								continue;

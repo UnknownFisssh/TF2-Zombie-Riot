@@ -4313,6 +4313,7 @@ public void SetNpcToDeadViaGib(int pThis)
 	SetEntityRenderMode(pThis, RENDER_NONE);
 	SetEdictFlags(pThis, SetEntityTransmitState(pThis, FL_EDICT_DONTSEND));
 	CreateTimer(1.0, Timer_RemoveEntity, EntIndexToEntRef(pThis), TIMER_FLAG_NO_MAPCHANGE);	
+	Update_TransmitState(pThis);
 }
 
 public void Kill_Npc(int ref)
@@ -5432,11 +5433,13 @@ stock int GetClosestTarget(int entity,
 				CClotBody npc = view_as<CClotBody>(i);
 				if (GetTeam(i) != SearcherNpcTeam && !npc.m_bThisEntityIgnored && IsEntityAlive(i, true))
 				{
+#if defined ZR
 					if(Dungeon_Mode() && !CvarInfiniteCash.BoolValue)
 					{
 						if(Dungeon_GetEntityZone(entity) != Dungeon_GetEntityZone(i))
 							continue;
 					}
+#endif
 
 					if(CanSee)
 					{
@@ -5477,11 +5480,13 @@ stock int GetClosestTarget(int entity,
 			if(entity_close != entity && IsValidEntity(entity_close) && entity_close != ingore_client && GetTeam(entity_close) != SearcherNpcTeam)
 			{
 				CClotBody npc = view_as<CClotBody>(entity_close);
+#if defined ZR
 				if(Dungeon_Mode() && !CvarInfiniteCash.BoolValue)
 				{
 					if(Dungeon_GetEntityZone(entity) != Dungeon_GetEntityZone(entity_close))
 						continue;
 				}
+#endif
 #if defined RTS
 				if(!npc.m_bThisEntityIgnored && IsEntityAlive(entity_close, true) && !b_NpcIsInvulnerable[entity_close] && !b_ThisEntityIgnoredByOtherNpcsAggro[entity_close]) //Check if dead or even targetable
 				{
@@ -5576,7 +5581,10 @@ stock int GetClosestTarget(int entity,
 	//If the team searcher is not on red, target buildings, buildings can only be on the player team.
 #if defined ZR
 	//In Construction2 we want them to always try to target buildings.
-	if(SearcherNpcTeam != TFTeam_Red && !RaidbossIgnoreBuildingsLogic(1) && !IgnoreBuildings && ((view_as<CClotBody>(entity).m_iTarget > 0 && i_IsABuilding[view_as<CClotBody>(entity).m_iTarget]) || IgnorePlayers || (Dungeon_Mode()))) //If the previous target was a building, then we try to find another, otherwise we will only go for collisions.
+	 //dunggons ignore this if its a raid attack
+	if(SearcherNpcTeam != TFTeam_Red && !RaidbossIgnoreBuildingsLogic(1) && !IgnoreBuildings && ((view_as<CClotBody>(entity).m_iTarget > 0 && i_IsABuilding[view_as<CClotBody>(entity).m_iTarget]) || IgnorePlayers ||
+	 (Dungeon_Mode() && Dungeon_AttackType() >= 2))) 
+	 //If the previous target was a building, then we try to find another, otherwise we will only go for collisions.
 #else
 	if(!IgnoreBuildings && ((view_as<CClotBody>(entity).m_iTarget > 0 && i_IsABuilding[view_as<CClotBody>(entity).m_iTarget]) || IgnorePlayers))
 #endif
@@ -5595,6 +5603,7 @@ stock int GetClosestTarget(int entity,
 							continue;
 					}
 
+#if defined ZR
 					if(Dungeon_Mode() && !CvarInfiniteCash.BoolValue)
 					{
 						if(Dungeon_GetEntityZone(entity) != Dungeon_GetEntityZone(entity_close))
@@ -5603,6 +5612,7 @@ stock int GetClosestTarget(int entity,
 						if(Const2_IgnoreBuilding_FindTraget(entity_close))
 							continue;
 					}
+#endif
 
 					if(ExtraValidityFunction != INVALID_FUNCTION)
 					{
@@ -6337,6 +6347,7 @@ void GiveNpcOutLineLastOrBoss(int entity, bool add)
 	{
 		if(IsValidEntity(npc.m_iTeamGlow)) 
 		{
+			Update_TransmitState(entity);
 			RemoveEntity(npc.m_iTeamGlow);
 		}	
 		return;	
@@ -6351,6 +6362,7 @@ void GiveNpcOutLineLastOrBoss(int entity, bool add)
 	{
 		if(!IsValidEntity(npc.m_iTeamGlow))
 		{
+			Update_TransmitState(entity);
 			npc.m_iTeamGlow = TF2_CreateGlow(entity);
 			
 			SetVariantColor(view_as<int>({125, 200, 255, 200}));
@@ -6361,6 +6373,7 @@ void GiveNpcOutLineLastOrBoss(int entity, bool add)
 	{
 		if(IsValidEntity(npc.m_iTeamGlow)) 
 		{
+			Update_TransmitState(entity);
 			RemoveEntity(npc.m_iTeamGlow);
 		}		
 	}
@@ -6950,7 +6963,7 @@ void UnstuckStuckNpc(CClotBody npc)
 	if(GetTeam(npc.index) != TFTeam_Red)
 	{
 		//This was an enemy.
-		if(Rogue_Mode())
+		if(Rogue_Mode() || Dungeon_Mode())
 		{
 			RequestFrame(KillNpc, EntIndexToEntRef(npc.index));
 			return;
@@ -7374,14 +7387,7 @@ void Npc_DoGibLogic(int pThis, float GibAmount = 1.0, bool forcesilentMode = fal
 	ScaleVector(damageForce, 0.025); //Reduce overall
 
 	bool Limit_Gibs = false;
-	if(CurrentGibCount > ZR_MAX_GIBCOUNT)
-	{
-		Limit_Gibs = true;
-	}
-	if(EnableSilentMode)
-		Limit_Gibs = true;
-
-	if(forcesilentMode)
+	if(CurrentGibCount > ZR_MAX_GIBCOUNT || EnableSilentMode || forcesilentMode || AtEdictLimit(EDICT_NPC))
 		Limit_Gibs = true;
 
 	if(npc.m_iBleedType == BLEEDTYPE_METAL)
@@ -7510,23 +7516,23 @@ void Npc_DoGibLogic(int pThis, float GibAmount = 1.0, bool forcesilentMode = fal
 		{
 			case BLEEDTYPE_NORMAL:
 			{
-				if(!EnableSilentMode)
+				if(!EnableSilentMode || !AtEdictLimit(EDICT_EFFECT))
 					ParticleSet = ParticleEffectAt(TempPosition, "blood_trail_red_01_goop", Random_time); 
 				SetEntityRenderColor(prop, 255, 0, 0, 255);
 			}
 			case BLEEDTYPE_METAL:
 			{
-				if(!EnableSilentMode)
+				if(!EnableSilentMode || !AtEdictLimit(EDICT_EFFECT))
 					ParticleSet = ParticleEffectAt(TempPosition, "tpdamage_4", Random_time); 
 			}
 			case BLEEDTYPE_RUBBER:
 			{
-				if(!EnableSilentMode)
+				if(!EnableSilentMode || !AtEdictLimit(EDICT_EFFECT))
 					ParticleSet = ParticleEffectAt(TempPosition, "doublejump_trail_alt", Random_time); //This is a permanent particle, gotta delete it manually...
 			}
 			case BLEEDTYPE_XENO:
 			{
-				if(!EnableSilentMode)
+				if(!EnableSilentMode || !AtEdictLimit(EDICT_EFFECT))
 					ParticleSet = ParticleEffectAt(TempPosition, "blood_impact_green_01", Random_time); 
 				SetEntityRenderColor(prop, 0, 255, 0, 255);
 			}
@@ -7536,13 +7542,13 @@ void Npc_DoGibLogic(int pThis, float GibAmount = 1.0, bool forcesilentMode = fal
 			}*/
 			case BLEEDTYPE_SEABORN:
 			{
-				if(!EnableSilentMode)
+				if(!EnableSilentMode || !AtEdictLimit(EDICT_EFFECT))
 					ParticleSet = ParticleEffectAt(TempPosition, "flamethrower_rainbow_bubbles02", Random_time); 
 				SetEntityRenderColor(prop, 65, 65, 255, 255);
 			}
 			case BLEEDTYPE_VOID:
 			{
-				if(!EnableSilentMode)
+				if(!EnableSilentMode || !AtEdictLimit(EDICT_EFFECT))
 				{
 					TE_BloodSprite(TempPosition, { 0.0, 0.0, 0.0 }, 200, 0, 200, 255, 32);
 					TE_SendToAllInRange(TempPosition, RangeType_Visibility);
@@ -10353,7 +10359,7 @@ public void Npc_BossHealthBar(CClotBody npc)
 
 public void Npc_DebuffWorldTextUpdate(CClotBody npc)
 {
-	if(b_IsEntityNeverTranmitted[npc.index] || b_NoHealthbar[npc.index])
+	if(AtEdictLimit(EDICT_RAID) || b_IsEntityNeverTranmitted[npc.index] || b_NoHealthbar[npc.index] || i_NpcIsABuilding[npc.index] || i_IsABuilding[npc.index])
 	{
 		if(IsValidEntity(npc.m_iTextEntity4))
 		{
@@ -10390,7 +10396,12 @@ public void Npc_DebuffWorldTextUpdate(CClotBody npc)
 	{
 		Format(HealthText, sizeof(HealthText), "%s!(%i)",HealthText, i_HowManyBombsHud[npc.index]);
 	}
-	if(VausMagicaShieldLeft(npc.index) > 0)
+	bool DisplayVausShield = true;
+	if(Dungeon_Mode() && Dungeon_AttackType() < 2)
+	{
+		DisplayVausShield = false;
+	}
+	if(DisplayVausShield && VausMagicaShieldLeft(npc.index) > 0)
 	{
 		Format(HealthText, sizeof(HealthText), "%sS(%i)",HealthText,VausMagicaShieldLeft(npc.index));
 	}
@@ -10707,6 +10718,7 @@ public void MakeEntityRagdollNpc(int pThis)
 #endif
 
 	SDKCall_BecomeRagdollOnClient(pThis, Push);
+	Update_TransmitState(pThis);
 }
 
 void RemoveNpcFromEnemyList(int npc, bool ingoresetteam = false)
@@ -11540,7 +11552,21 @@ void ExtinguishTarget(int target, bool dontkillTimer = false)
 void IsEntityInvincible_Shield(int entity)
 {
 	int NpcInvulShieldDisplay;
-
+	if(i_NpcIsABuilding[entity] || i_IsABuilding[entity])
+	{
+		//never display for buildings!!
+		return;
+	}
+#if defined ZR
+	if(Dungeon_Mode() && AtEdictLimit(EDICT_NPC))
+	{
+		if(Dungeon_AttackType() < 2)
+		{
+			//dont display any shields if its dungeon mode and above the limit!
+			return;
+		}
+	}
+#endif
 	if(HasSpecificBuff(entity, "UBERCHARGED"))
 		NpcInvulShieldDisplay = 3;
 
@@ -11551,9 +11577,9 @@ void IsEntityInvincible_Shield(int entity)
 #endif
 	if(IsInvuln(entity, true))
 		NpcInvulShieldDisplay = 1;
-	
+		
 	CClotBody npc = view_as<CClotBody>(entity);
-	if(!NpcInvulShieldDisplay || b_ThisEntityIgnored[entity])
+	if(!NpcInvulShieldDisplay || b_ThisEntityIgnored[entity] || AtEdictLimit(EDICT_PLAYER))
 	{
 		IsEntityInvincible_ShieldRemove(entity);
 		return;

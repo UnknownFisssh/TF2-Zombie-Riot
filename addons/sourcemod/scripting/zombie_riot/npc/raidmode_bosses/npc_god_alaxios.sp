@@ -553,7 +553,7 @@ public void GodAlaxios_ClotThink(int iNPC)
 					{
 						f_AttackSpeedNpcIncrease[npc.index] *= 0.75;
 						fl_Extra_Damage[npc.index] *= 0.75;
-						CPrintToChatAll("{crimson}The infection wont let go. It wants him the most.");
+						CPrintToChatAll("{crimson}The infection won't let go. It wants him the most.");
 						b_NpcUnableToDie[npc.index] = false;
 						RaidModeTime = GetGameTime(npc.index) + 150.0;
 						RaidBossActive = EntIndexToEntRef(npc.index);
@@ -588,25 +588,28 @@ public void GodAlaxios_ClotThink(int iNPC)
 									//only apply the laser if they are near us.
 									if(IsValidClient(EnemyLoop) && Can_I_See_Enemy_Only(npc.index, EnemyLoop) && IsEntityAlive(EnemyLoop) && EnemyLoop == npc.m_iTargetWalkTo)
 									{
-										//Pull them.
-										static float angles[3];
-										GetVectorAnglesTwoPoints(EnemyPos, flPos, angles);
+										if(!HasSpecificBuff(EnemyLoop, "Solid Stance"))
+										{
+											//Pull them.
+											static float angles[3];
+											GetVectorAnglesTwoPoints(EnemyPos, flPos, angles);
 
-										if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
-											angles[0] = 0.0; // toss out pitch if on ground
+											if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
+												angles[0] = 0.0; // toss out pitch if on ground
 
-										static float velocity[3];
-										GetAngleVectors(angles, velocity, NULL_VECTOR, NULL_VECTOR);
-										float attraction_intencity = 1.50;
-										ScaleVector(velocity, Distance * attraction_intencity);
+											static float velocity[3];
+											GetAngleVectors(angles, velocity, NULL_VECTOR, NULL_VECTOR);
+											float attraction_intencity = 1.50;
+											ScaleVector(velocity, Distance * attraction_intencity);
+															
+															
+											// min Z if on ground
+											if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
+												velocity[2] = fmax(325.0, velocity[2]);
 														
-														
-										// min Z if on ground
-										if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
-											velocity[2] = fmax(325.0, velocity[2]);
-													
-										// apply velocity
-										TeleportEntity(EnemyLoop, NULL_VECTOR, NULL_VECTOR, velocity);   
+											// apply velocity
+											TeleportEntity(EnemyLoop, NULL_VECTOR, NULL_VECTOR, velocity);  
+										} 
 									}
 									else if(IsValidClient(EnemyLoop) && Can_I_See_Enemy_Only(npc.index, EnemyLoop))
 									{
@@ -615,34 +618,37 @@ public void GodAlaxios_ClotThink(int iNPC)
 										SDKHooks_TakeDamage(EnemyLoop, npc.index, npc.index, damage * RaidModeScaling, DMG_CLUB, -1, _, _);		
 										if(i_RaidGrantExtra[npc.index] == ALAXIOS_SEA_INFECTED)
 											Elemental_AddNervousDamage(EnemyLoop, npc.index, RoundToCeil(damage * RaidModeScaling * 0.1));
-										//push them away.
-										static float angles[3];
-										GetVectorAnglesTwoPoints(EnemyPos, flPos, angles);
-
-										if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
-											angles[0] = 0.0; // toss out pitch if on ground
-
-										static float velocity[3];
-										GetAngleVectors(angles, velocity, NULL_VECTOR, NULL_VECTOR);
-										float attraction_intencity = 1500.0;
-										ScaleVector(velocity, attraction_intencity);
-														
-														
-										// min Z if on ground
-										if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
+										if(!HasSpecificBuff(EnemyLoop, "Solid Stance"))
 										{
-											velocity[2] = 350.0;
+											//push them away.
+											static float angles[3];
+											GetVectorAnglesTwoPoints(EnemyPos, flPos, angles);
+
+											if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
+												angles[0] = 0.0; // toss out pitch if on ground
+
+											static float velocity[3];
+											GetAngleVectors(angles, velocity, NULL_VECTOR, NULL_VECTOR);
+											float attraction_intencity = 1500.0;
+											ScaleVector(velocity, attraction_intencity);
+															
+															
+											// min Z if on ground
+											if (GetEntityFlags(EnemyLoop) & FL_ONGROUND)
+											{
+												velocity[2] = 350.0;
+											}
+											else
+											{
+												velocity[2] = 200.0;
+											}
+														
+											// apply velocity
+											velocity[0] *= -1.0;
+											velocity[1] *= -1.0;
+										//	velocity[2] *= -1.0;
+											TeleportEntity(EnemyLoop, NULL_VECTOR, NULL_VECTOR, velocity);    	
 										}
-										else
-										{
-											velocity[2] = 200.0;
-										}
-													
-										// apply velocity
-										velocity[0] *= -1.0;
-										velocity[1] *= -1.0;
-									//	velocity[2] *= -1.0;
-										TeleportEntity(EnemyLoop, NULL_VECTOR, NULL_VECTOR, velocity);    	
 									}
 								}
 							}
@@ -668,7 +674,7 @@ public void GodAlaxios_ClotThink(int iNPC)
 					}
 					case 1:
 					{
-						CPrintToChatAll("{lightblue}God Alaxios{crimson}: IM UNDER CONTROLL, HELP ME.....");
+						CPrintToChatAll("{lightblue}God Alaxios{crimson}: I'M UNDER CONTROL, HELP ME.....");
 					}
 					case 3:
 					{
@@ -759,7 +765,7 @@ public void GodAlaxios_ClotThink(int iNPC)
 		else
 		{
 
-			CPrintToChatAll("{green}The Xeno infection sides with you...??!\nSuddenly a battle ensues between Xeno and the Sea infection with alaxios in possession..");
+			CPrintToChatAll("{green}The Xeno infection sides with you...??!\nSuddenly a battle ensues between Xeno and the Sea infection with Alaxios in possession..");
 			for(int i; i<32; i++)
 			{
 				float pos[3]; GetEntPropVector(npc.index, Prop_Data, "m_vecAbsOrigin", pos);
@@ -1452,8 +1458,8 @@ public void GodAlaxios_NPCDeath(int entity)
 		}
 		else
 		{
-			CPrintToChatAll("{lightblue}God Alaxios{default}: Im.. im free..?");
-			CPrintToChatAll("{lightblue}God Alaxios instnatly leaves the battlefield... you couldnt even trace him.");
+			CPrintToChatAll("{lightblue}God Alaxios{default}: I'm.. I'm free..?");
+			CPrintToChatAll("{lightblue}God Alaxios instantly leaves the battlefield... you couldn't even trace him.");
 		}
 	}
 	else
@@ -2217,11 +2223,11 @@ void AlaxiosSayWordsAngry(int entity)
 			}
 			case 1:
 			{
-				CPrintToChatAll("{lightblue}God Alaxios's head is under full controll, free him.");
+				CPrintToChatAll("{lightblue}God Alaxios's head is under full control, free him.");
 			}
 			case 2:
 			{
-				CPrintToChatAll("{lightblue}God Alaxios, even if strong, cant resist everything.");
+				CPrintToChatAll("{lightblue}God Alaxios, even if strong, can't resist everything.");
 			}
 			case 3:
 			{
@@ -2294,7 +2300,7 @@ bool AlaxiosForceTalk()
 			}
 			case 5:
 			{
-				CPrintToChatAll("{lightblue}God Alaxios{default}: You can wield {blue}Seaborn's{default} weapons without succumbing to their corruption, from what i can see atleast...");
+				CPrintToChatAll("{lightblue}God Alaxios{default}: You can wield {blue}Seaborn's{default} weapons without succumbing to their corruption, from what I can see atleast...");
 				i_TalkDelayCheck += 1;
 			}
 			case 6:

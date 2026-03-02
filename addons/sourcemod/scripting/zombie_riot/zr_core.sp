@@ -57,6 +57,7 @@ public const int DefaultWaveCash[] =
 	2500, 2500, 3000, 4000, 25000,
 	3000, 3000, 3000, 3000
 };
+
 enum DungeonZone
 {
 	Zone_Unknown = 0,
@@ -379,6 +380,12 @@ int PlayersInGame;
 bool ZombieMusicPlayed;
 int GlobalIntencity;
 bool b_HasBeenHereSinceStartOfWave[MAXPLAYERS];
+bool WasHereSinceStartOfWave(int client)
+{
+//	if(Dungeon_Mode())
+//		return true;
+	return b_HasBeenHereSinceStartOfWave[client];
+}
 Cookie CookieScrap;
 Cookie CookieXP;
 ArrayList Loadouts[MAXPLAYERS];
@@ -1191,7 +1198,7 @@ void ZR_ClientPutInServer(int client)
 	else
 		b_AntiLateSpawn_Allow[client] = false;
 
-	if(BetWar_Mode())
+	if(BetWar_Mode() || Dungeon_Mode())
 		b_AntiLateSpawn_Allow[client] = true;
 }
 
@@ -2026,7 +2033,11 @@ void CheckAlivePlayers(int killed=0, int Hurtviasdkhook = 0, bool TestLastman = 
 			}
 		}
 		if(!TestLastman)
+		{
+			
+			CheckIfAloneOnServer(true);
 			return;
+		}
 	}
 	
 	CheckIfAloneOnServer();
@@ -2705,7 +2716,11 @@ void ZR_CheckValidityOfPostions_OfObjectsInternal(bool recheck)
 		}
 	}
 }
-void ReviveAll(bool raidspawned = false, bool setmusicfalse = false, bool ForceFullHealth = false, bool Const2_DontRespawnBuildings = false)
+void ReviveAll(bool raidspawned = false,
+ bool setmusicfalse = false,
+  bool ForceFullHealth = false,
+   bool Const2_DontRespawnBuildings = false,
+  bool IsSetupRevive = false)
 {
 	//only set false here
 	if(!setmusicfalse)
@@ -2715,12 +2730,14 @@ void ReviveAll(bool raidspawned = false, bool setmusicfalse = false, bool ForceF
 	CreateTimer(1.0, ZR_CheckValidityOfPostions_OfObjects, false, TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(5.0, ZR_CheckValidityOfPostions_OfObjects, false, TIMER_FLAG_NO_MAPCHANGE);
 	//needed for map logic!
-
+	
+	if(ZR_Get_Modifier() == PREFIX_ONESTAND && !IsSetupRevive)
+		return;
 	for(int client=1; client<=MaxClients; client++)
 	{
 		CheckClientLateJoin(client, false);
 		bool ClientWasInWave = false;
-		if(b_HasBeenHereSinceStartOfWave[client])
+		if(WasHereSinceStartOfWave(client))
 			ClientWasInWave = true;
 		b_HasBeenHereSinceStartOfWave[client] = false;
 		if(IsClientInGame(client))
@@ -2822,6 +2839,8 @@ void ReviveAll(bool raidspawned = false, bool setmusicfalse = false, bool ForceF
 			CreateTimer(0.1, Timer_ChangePersonModel, GetClientUserId(client));
 		}
 	}
+	
+	if(ZR_Get_Modifier() == PREFIX_ONESTAND)
 	
 	Music_EndLastmann();
 	CheckAlivePlayers();

@@ -104,7 +104,7 @@ bool NPC_SpawnNext(bool panzer,
 			
 			for(int client=1; client<=MaxClients; client++)
 			{
-				if(!b_IsPlayerABot[client] && IsClientInGame(client) && GetClientTeam(client)==2 && TeutonType[client] != TEUTON_WAITING && b_HasBeenHereSinceStartOfWave[client])
+				if(!b_IsPlayerABot[client] && IsClientInGame(client) && GetClientTeam(client)==2 && TeutonType[client] != TEUTON_WAITING && WasHereSinceStartOfWave(client))
 				{
 					if(TeutonType[client] == TEUTON_DEAD || dieingstate[client] > 0)
 					{
@@ -2644,6 +2644,14 @@ int MaxEnemiesAllowedSpawnNext(int ExtraRules = 0)
 	{
 		maxenemies /= 2;
 	}
+	if(Dungeon_Mode())
+	{
+		if(Dungeon_AttackType() < 2)
+		{
+			//if its not a base attack reduce spawns by 25%
+			maxenemies = RoundToCeil(float(maxenemies) * 0.75);
+		}
+	}
 	switch(ExtraRules)
 	{
 		case 1:
@@ -2757,3 +2765,70 @@ stock int StrLenMB(const char[] str)
 	return count;
 }  
 */
+
+#if defined ZR
+void PrintNPCMessageWithPrefixes(int entity, const char[] color, const char[] message, bool messageIsTranslated = false)
+{
+	bool checkedForPrefixes;
+	bool loud;
+	char finalColor[32];
+	char finalMessage[255];
+	
+	// Only copy the message once if it's not translated
+	if (!messageIsTranslated)
+		strcopy(finalMessage, sizeof(finalMessage), message);
+	
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (!IsClientInGame(client) || IsFakeClient(client))
+			continue;
+		
+		char prefix[255];
+		StatusEffects_PrefixName(entity, client, prefix, sizeof(prefix));
+		
+		// On the first valid client, check for prefixes and modify the message based on them
+		if (!checkedForPrefixes)
+		{
+			bool hasPrefix = prefix[0] != '\0';
+			if (hasPrefix)
+			{
+				if (HasSpecificBuff(entity, "Verde"))
+				{
+					// verd e
+					finalColor = "forestgreen";
+				}
+				else if (HasSpecificBuff(entity, "Ragebaiter Prefix"))
+				{
+					// To match the rest of ragebaiter text
+					finalColor = "crimson";
+				}
+				
+				if (HasSpecificBuff(entity, "Loud Prefix"))
+					loud = true;
+			}
+			
+			if (finalColor[0] == '\0')
+				strcopy(finalColor, sizeof(finalColor), color);
+			
+			if (!messageIsTranslated && loud)
+				StringToUpper(finalMessage);
+			
+			checkedForPrefixes = true;
+		}
+		
+		if (messageIsTranslated)
+		{
+			// Do some things per-client if the message is translated
+			FormatEx(finalMessage, sizeof(finalMessage), "%T", message, client);
+			
+			if (loud)
+				StringToUpper(finalMessage);
+		}
+		
+		if (!b_NameNoTranslation[entity])
+			CPrintToChat(client, "{%s}%s%s{default}: %s", finalColor, prefix, c_NpcName[entity], finalMessage);
+		else
+			CPrintToChat(client, "{%s}%s%t{default}: %s", finalColor, prefix, c_NpcName[entity], finalMessage);
+	}
+}
+#endif

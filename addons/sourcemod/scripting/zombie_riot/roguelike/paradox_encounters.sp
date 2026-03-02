@@ -746,7 +746,7 @@ public void Rogue_Vote_FortituousOpportunity(const Vote vote, int index)
 	if(StrEqual(vote.Config, "Unauthorized Ruina Gem"))
 	{
 		CPrintToChatAll("{purple}Twirl{snow}: ........................... So you all are traitors. Go to hell.");
-		CPrintToChatAll("{crimson}Twirl leaves you alone in the desert, bob the second also leaves you... Uh... did you think this one through?");
+		CPrintToChatAll("{crimson}Twirl leaves you alone in the desert, Bob the Second also leaves you... Uh... did you think this one through?");
 		ForcePlayerLoss();
 		//If mercs give it away, you just auto loose.
 	}
@@ -785,7 +785,7 @@ public float Rogue_Encounter_EmergencyDispatch()
 	int[] players = new int[MaxClients];
 	for(int client = 1; client <= MaxClients; client++)
 	{
-		if(!b_IsPlayerABot[client] && b_HasBeenHereSinceStartOfWave[client] && IsClientInGame(client) && GetClientTeam(client) == 2 && TeutonType[client] != TEUTON_WAITING)
+		if(!b_IsPlayerABot[client] && WasHereSinceStartOfWave(client) && IsClientInGame(client) && GetClientTeam(client) == 2 && TeutonType[client] != TEUTON_WAITING)
 		{
 			players[count++] = client;
 		}

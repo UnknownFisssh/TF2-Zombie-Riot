@@ -421,16 +421,20 @@ methodmap Construction_Raid_Zilius < CClotBody
 		}
 		RemoveAllDamageAddition();
 		bool final = StrContains(data, "final_item") != -1;
+		bool bossrush = StrContains(data, "bossrush") != -1;
 		
 		Zero(b_said_player_weaponline);
 		fl_said_player_weaponline_time[npc.index] = GetGameTime() + GetRandomFloat(0.0, 5.0);
 		
 		if(final)
 		{
-			PrintToChatAll("test1");
 			b_NpcUnableToDie[npc.index] = true;
 			i_RaidGrantExtra[npc.index] = 1;
 		}
+		
+		if (bossrush)
+			RaidAllowsBuildings = false;
+		
 		b_thisNpcIsARaid[npc.index] = true;
 		
 		npc.m_iBleedType = BLEEDTYPE_NORMAL;
@@ -534,7 +538,7 @@ methodmap Construction_Raid_Zilius < CClotBody
 		SetVariantInt(1);
 		AcceptEntityInput(npc.index, "SetBodyGroup");
 
-		SetVariantColor(view_as<int>({0, 0, 0, 150}));
+		SetVariantColor(view_as<int>({50, 50, 150, 200}));
 		AcceptEntityInput(npc.m_iTeamGlow, "SetGlowColor");
 		bool ingoremusic = StrContains(data, "triple_enemies") != -1;
 		
@@ -635,6 +639,16 @@ static void Internal_ClotThink(int iNPC)
 				} 
 				default:
 				{
+					for (int client = 1; client <= MaxClients; client++)
+					{
+						if(IsValidClient(client) && GetClientTeam(client) == 2 && TeutonType[client] != TEUTON_WAITING && PlayerPoints[client] > 500)
+						{
+							if(Items_GiveNamedItem(client, "Foreign Expidonsan Chip"))
+							{
+								CPrintToChat(client, "{green}Obtained{yellow} ''Foreign Expidonsan Chip''");
+							}
+						}
+					}
 					ForcePlayerWin();
 					npc.m_flWinAnimationSay = 0.0;
 					npc.m_flWinAnimation = 0.0;
@@ -794,7 +808,7 @@ static Action Internal_OnTakeDamage(int victim, int &attacker, int &inflictor, f
 	int health = GetEntProp(victim, Prop_Data, "m_iHealth");
 	if(RoundToCeil(damage) >= health && i_RaidGrantExtra[npc.index] == 1)
 	{
-		if(Construction_Mode())
+		if(Construction_Mode() || Dungeon_Mode())
 		{
 			CPrintToChatAll("{black}Zilius{default}: Guess you lot are more then worthy. ill let you be, be usefull against the {purple}void{default}.");
 			npc.m_flWinAnimation = GetGameTime() + 50.0;
@@ -824,7 +838,7 @@ static Action Internal_OnTakeDamage(int victim, int &attacker, int &inflictor, f
 
 		Waves_ClearWaves();
 		
-		if(Construction_Mode())
+		if(Construction_Mode() || Dungeon_Mode())
 		{
 			GiveProgressDelay(50.0);
 

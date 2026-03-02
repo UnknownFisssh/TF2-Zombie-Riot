@@ -724,7 +724,7 @@ int Building_BuildByName(const char[] plugin, int client, float vecPos[3], float
 
 static int BuildByInfo(BuildingInfo info, int client, float vecPos[3], float vecAng[3])
 {
-	int entity = NPC_CreateByName(info.Plugin, client, vecPos, vecAng, GetTeam(client));
+	int entity = NPC_CreateByName(info.Plugin, client, vecPos, vecAng, client < 1 ? TFTeam_Red : GetTeam(client));
 	if(entity != -1)
 	{
 		ObjectGeneric obj = view_as<ObjectGeneric>(entity);
@@ -755,7 +755,9 @@ static int BuildByInfo(BuildingInfo info, int client, float vecPos[3], float vec
 			SetEntProp(obj.index, Prop_Data, "m_iRepairMax", maxrepair);
 			SetEntProp(obj.index, Prop_Data, "m_iRepair", repair);
 		}
-		SetTeam(obj.index, GetTeam(client));
+
+		if(client > 0)
+			SetTeam(obj.index, GetTeam(client));
 
 		GiveBuildingMetalCostOnBuy(entity, 0);
 	}
@@ -986,6 +988,9 @@ public void Pickup_Building_M2_InfRange(int client, int weapon, bool crit)
 			return;
 		}
 	}
+	//dont allow pickup
+	if(objstats.m_bCannotBePickedUp)
+		return; 
 	if(IsValidEntity(objstats.m_iMasterBuilding))
 	{
 		entity = objstats.m_iMasterBuilding;
@@ -1817,7 +1822,7 @@ bool Building_RepairObject(int client, int target, int weapon,float vectorhit[3]
 	int iHealth, max_health;
 	if(i_IsVehicle[target])
 	{
-		max_health = 10000;
+		max_health = view_as<VehicleGeneric>(target).m_iMaxArmor;
 		iHealth = Armor_Charge[target];
 	}
 	else
@@ -2845,6 +2850,8 @@ static void Tinker_TouchAnything(int entity, int target)
 	{
 		if(i_NpcIsABuilding[target])
 		{
+			if(view_as<ObjectGeneric>(target).m_bConstructBuilding && IsValidEntity(view_as<ObjectGeneric>(target).m_iConstructDeathModel))
+				return;
 			//heal building?
 			bool RepairDone = false;
 			int weapon = EntRefToEntIndex(i_WandWeapon[entity]);

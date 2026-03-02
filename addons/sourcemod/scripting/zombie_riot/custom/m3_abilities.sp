@@ -962,7 +962,7 @@ public void Reinforce(int client, bool NoCD)
 				continue;
 			if(client==client_check || GetTeam(client_check) != TFTeam_Red)
 				continue;
-			if(!b_HasBeenHereSinceStartOfWave[client_check])
+			if(!WasHereSinceStartOfWave(client_check))
 				continue;
 			if(f_PlayerLastKeyDetected[client_check] < GetGameTime())
 				continue;
@@ -991,7 +991,7 @@ public void Reinforce(int client, bool NoCD)
 
 		
 		i_MaxRevivesAWave++;
-		CPrintToChatAll("{green}%N Is calling for additonal Mercs for temporary assistance...",client);
+		CPrintToChatAll("{green}%N is calling for additonal Mercs for temporary assistance...",client);
 		float position[3];
 		GetEntPropVector(client, Prop_Send, "m_vecOrigin", position);
 
@@ -1098,7 +1098,7 @@ static Handle CallbackTimer[MAXPLAYERS];
 
 public void BuilderMenu(int client)
 {
-	if(dieingstate[client] == 0)
+	if(IsPlayerAlive(client) && dieingstate[client] == 0)
 	{	
 		CancelClientMenu(client);
 		SetStoreMenuLogic(client, false);
@@ -1873,6 +1873,10 @@ public Action Timer_Detect_Player_Near_Repair_Grenade(Handle timer, DataPack pac
 					int entity_close = EntRefToEntIndexFast(i_ObjectsBuilding[entitycount]);
 					if(IsValidEntity(entity_close))
 					{
+						// Downed construct buildings
+						if(view_as<ObjectGeneric>(entity_close).m_bConstructBuilding && IsValidEntity(view_as<ObjectGeneric>(entity_close).m_iConstructDeathModel))
+							continue;
+						
 						GetEntPropVector(entity_close, Prop_Data, "m_vecAbsOrigin", client_pos);
 						if (GetVectorDistance(powerup_pos, client_pos, true) <= (500.0 * 500.0))
 						{
@@ -2086,7 +2090,7 @@ public Action OnBombDrop(const char [] output, int caller, int activator, float 
 		if(IsValidClient(PreviousOwner))
 		{
 			int RandomHELLDIVER = GetRandomDeathPlayer(HELLDIVER);
-			if(IsValidClient(RandomHELLDIVER) && GetTeam(RandomHELLDIVER) == TFTeam_Red && TeutonType[RandomHELLDIVER] == TEUTON_DEAD && b_HasBeenHereSinceStartOfWave[RandomHELLDIVER])
+			if(IsValidClient(RandomHELLDIVER) && GetTeam(RandomHELLDIVER) == TFTeam_Red && TeutonType[RandomHELLDIVER] == TEUTON_DEAD && WasHereSinceStartOfWave(RandomHELLDIVER))
 			{
 				TeutonType[RandomHELLDIVER] = TEUTON_NONE;
 				dieingstate[RandomHELLDIVER] = 0;
@@ -2108,7 +2112,7 @@ public Action OnBombDrop(const char [] output, int caller, int activator, float 
 				GiveCompleteInvul(RandomHELLDIVER, 3.5);
 				TF2_AddCondition(RandomHELLDIVER, TFCond_SpeedBuffAlly, 2.0);
 				EmitSoundToAll(g_ReinforceReadySounds, RandomHELLDIVER, SNDCHAN_STATIC, RAIDBOSS_ZOMBIE_SOUNDLEVEL, _, BOSS_ZOMBIE_VOLUME);
-				CPrintToChatAll("{black}Bob The Second {green}responds.... and was able to recuit {yellow}%N!",RandomHELLDIVER);
+				CPrintToChatAll("{black}Bob The Second {green}responds.... and was able to recruit {yellow}%N!",RandomHELLDIVER);
 				DataPack pack_boom = new DataPack();
 				pack_boom.WriteFloat(position[0]);
 				pack_boom.WriteFloat(position[1]);
@@ -2120,7 +2124,7 @@ public Action OnBombDrop(const char [] output, int caller, int activator, float 
 			{
 				if(IsValidClient(PreviousOwner))
 				{
-					CPrintToChat(PreviousOwner, "{black}Bob The Second {default}Wasnt able to get any merc... he refunds the backup call.");
+					CPrintToChat(PreviousOwner, "{black}Bob The Second {default}wasn't able to get any merc... he refunds the backup call.");
 					HealPointToReinforce(PreviousOwner, 0, 1.0);
 					i_MaxRevivesAWave--;
 				}
@@ -2191,7 +2195,7 @@ stock int GetRandomDeathPlayer(int client)
 		if(client==client_check || GetTeam(client_check) != TFTeam_Red)
 			continue;
 
-		if(!b_HasBeenHereSinceStartOfWave[client_check])
+		if(!WasHereSinceStartOfWave(client_check))
 			continue;
 
 		if(f_PlayerLastKeyDetected[client_check] < GetGameTime())

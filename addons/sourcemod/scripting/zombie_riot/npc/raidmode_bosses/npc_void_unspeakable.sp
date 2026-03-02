@@ -870,8 +870,8 @@ bool VoidUnspeakable_MatterAbsorber(VoidUnspeakable npc, float gameTime)
 		{
 			if(IsValidEnemy(npc.index, EnemyLoop, true, true))
 			{
-				if(Can_I_See_Enemy_Only(npc.index, EnemyLoop) && IsEntityAlive(EnemyLoop))
-				{ 	
+				if(!HasSpecificBuff(EnemyLoop, "Solid Stance") && Can_I_See_Enemy_Only(npc.index, EnemyLoop) && IsEntityAlive(EnemyLoop))
+				{
 					GetEntPropVector(EnemyLoop, Prop_Data, "m_vecAbsOrigin", cpos);
 					
 					MakeVectorFromPoints(pos, cpos, velocity);
@@ -1020,7 +1020,7 @@ public void VoidUnspeakable_NPCDeath(int entity)
 	if(i_RaidGrantExtra[npc.index] == 6)
 	{
 		CPrintToChatAll("{purple}NEED TO RETURN TO THEM...");
-		CPrintToChatAll("{darkgray}Shadowing Darkness{default}: Ngh... The voices in my head cant even leave me.");	
+		CPrintToChatAll("{darkgray}Shadowing Darkness{default}: Ngh... The voices in my head can't even leave me.");	
 	}
 		
 	if(IsValidEntity(npc.m_iWearable8))
@@ -1330,7 +1330,7 @@ void VoidUnspeakable_DeathAnimationKahml(VoidUnspeakable npc, float gameTime)
 				case 16:
 				{
 					CPrintToChatAll("{black}Izan :{default} Exp-");
-					CPrintToChatAll("{white}Bob uses the item that Bladedance gave him a long time ago, and thus unbannished us out of the realm, shadowing darkness and izan couldnt reach us in time.");
+					CPrintToChatAll("{white}Bob uses the item that Bladedance gave him a long time ago, and thus unbannished us out of the realm, Shadowing Darkness and Izan couldnt reach us in time.");
 					
 					RequestFrame(KillNpc, EntIndexToEntRef(npc.index));
 					for(int client_check=1; client_check<=MaxClients; client_check++)

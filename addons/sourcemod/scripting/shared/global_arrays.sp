@@ -211,6 +211,8 @@ int Animation_Index[MAXPLAYERS];
 int Animation_Retry[MAXPLAYERS];
 #endif
 
+float f_LatestDamageTaken[MAXPLAYERS];
+int i_LatestHealthLeft[MAXPLAYERS];
 int Building_Mounted[MAXENTITIES];
 bool i_HasBeenBackstabbed[MAXENTITIES];
 bool i_HasBeenHeadShotted[MAXENTITIES];
@@ -259,7 +261,7 @@ float f_TimerStatusEffectsDo[MAXENTITIES];
 
 int Healing_done_in_total[MAXENTITIES];
 int i_PlayerDamaged[MAXENTITIES];
-bool b_PlayerWasAirbornKnockbackReduction[MAXPLAYERS];
+int b_PlayerWasAirbornKnockbackReduction[MAXPLAYERS];
 ConVar CvarRPGInfiniteLevelAndAmmo;
 ConVar CvarXpMultiplier;
 TFClassType CurrentClass[MAXPLAYERS]={TFClass_Scout, ...};
@@ -663,6 +665,7 @@ bool b_IgnoreAllCollisionNPC[MAXENTITIES];		//for npc's that noclip
 int iref_PropAppliedToRocket[MAXENTITIES];
 
 int i_ExplosiveProjectileHexArray[MAXENTITIES];
+int h_TransmitHookType[MAXENTITIES];
 int h_NpcCollissionHookType[MAXENTITIES];
 int h_NpcSolidHookType[MAXENTITIES];
 int h_NpcHandleEventHook[MAXENTITIES];
