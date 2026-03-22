@@ -2145,9 +2145,10 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 				Rogue_TriggerFunction(Artifact::FuncWaveStart);
 
 				if(Classic_Mode())
+				{
 					Classic_NewRoundStart(round.Cash);
+				}	
 			}
-			
 			if(wave.RelayName[0])
 				ExcuteRelay(wave.RelayName, wave.RelayFire);
 			
@@ -2326,6 +2327,17 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 					else
 					{
 						CPrintToChatAll("{green}%t","Cash Gained This Wave", CashGive);
+					}
+				}
+			}
+			if(Classic_Mode())
+			{
+				for(int entitycount; entitycount<i_MaxcountNpcTotal; entitycount++)
+				{
+					int entity = EntRefToEntIndexFast(i_ObjectsNpcsTotal[entitycount]);
+					if(IsValidEntity(entity) && GetTeam(entity) != TFTeam_Red)
+					{
+						FreezeNpcInTime(entity, 3.0, true);
 					}
 				}
 			}
@@ -4438,11 +4450,11 @@ void Waves_EnemySpawned(int entity)
 		Call_PushCell(entity);
 		Call_Finish();
 	}
-	if(!b_thisNpcIsARaid[entity] && XenoExtraLogic(true))
+	if(!b_thisNpcIsARaid[entity] && !b_thisNpcIsAMiniboss[entity] && XenoExtraLogic(true))
 	{
 		ApplyStatusEffect(entity, entity, "Xeno's Territory", 99999.0);
 	}
-	if(!b_thisNpcIsARaid[entity] && FishExtraLogic(true))
+	if(!b_thisNpcIsARaid[entity] && !b_thisNpcIsAMiniboss[entity] && FishExtraLogic(true))
 	{
 		ApplyStatusEffect(entity, entity, "Corrupted Godly Power", 99999.0);
 	}

@@ -1463,6 +1463,11 @@
 		"it"		"Avanguardia annullata"
 		"ko" 		"공허화된 뱅가드"
 	}
+	"Sea-Infected Voided Vanguard"
+	{
+		"en" 		"Sea-Infected Voided Vanguard"
+		"ko" 		"시테러 감염체 공허화된 뱅가드"
+	}
 	"Kahmlstein"
 	{
 		"en"		"Kahmlstein"
@@ -6266,6 +6271,14 @@
 		"en"		"Lost Knight"
 		"it"		"Cavaliere perduto"
 		"ko"		"길 잃은 기사"
+	}
+	"Rollermine"
+	{
+		"en"		"Rollermine"
+	}
+	"Nova Prospekt Overseer"
+	{
+		"en"		"Nova Prospekt Overseer"
 	}
 	"Omega"
 	{

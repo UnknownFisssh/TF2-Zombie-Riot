@@ -296,7 +296,8 @@ enum
     WEAPON_KIT_PURGE_RAMPAGER = 161,
     WEAPON_KIT_PURGE_ANNAHILATOR = 162,
     WEAPON_KIT_PURGE_MISC = 163,
-	WEAPON_BOMB_AR = 164
+	WEAPON_BOMB_AR = 164,
+	WEAPON_BRICK = 165
 }
 
 enum
@@ -335,6 +336,7 @@ int GrigoriMaxSells = 3;
 int Bob_Exists_Index = -1;
 int CurrentPlayers;
 ConVar zr_voteconfig;
+ConVar zr_disable_barney_rename;
 ConVar zr_tagblacklist;
 ConVar zr_tagwhitelist;
 ConVar zr_tagwhitehard;
@@ -393,15 +395,6 @@ ArrayList Loadouts[MAXPLAYERS];
 float f_RingDelayGift[MAXENTITIES];
 float Resistance_for_building_High[MAXENTITIES];
 
-//custom wave music.
-MusicEnum MusicString1;
-MusicEnum MusicString2;
-MusicEnum MusicSetup1;
-MusicEnum MusicLastmann;
-MusicEnum MusicWin;
-MusicEnum MusicLoss;
-MusicEnum RaidMusicSpecial1;
-MusicEnum BGMusicSpecial1;
 //custom wave music.
 float f_DelaySpawnsForVariousReasons;
 int CurrentRound[Rounds_MAX];
@@ -697,6 +690,9 @@ float fl_MatrixReflect[MAXENTITIES];
 #include "custom/kit_purging.sp"
 #include "custom/weapon_bombplant_smg.sp"
 #include "custom/weapon_guiding_missile.sp"
+
+
+
 
 void ZR_PluginLoad()
 {
@@ -1848,7 +1844,7 @@ public Action Timer_Dieing(Handle timer, int client)
 				int entity, i;
 				while(TF2U_GetWearable(client, entity, i))
 				{
-					if(entity == EntRefToEntIndex(Armor_Wearable[client]) || i_WeaponVMTExtraSetting[entity] != -1)
+					if(i_WeaponVMTExtraSetting[entity] != -1)
 						continue;
 
 					SetEntityRenderMode(entity, RENDER_NORMAL);
@@ -2175,7 +2171,7 @@ void CheckAlivePlayers(int killed=0, int Hurtviasdkhook = 0, bool TestLastman = 
 							int entity, i;
 							while(TF2U_GetWearable(client, entity, i))
 							{
-								if(entity == EntRefToEntIndex(Armor_Wearable[client]) || i_WeaponVMTExtraSetting[entity] != -1)
+								if(i_WeaponVMTExtraSetting[entity] != -1)
 									continue;
 
 								SetEntityRenderMode(entity, RENDER_NORMAL);
@@ -2758,7 +2754,7 @@ void ReviveAll(bool raidspawned = false,
 				int entity, i;
 				while(TF2U_GetWearable(client, entity, i))
 				{
-					if(entity == EntRefToEntIndex(Armor_Wearable[client]) || i_WeaponVMTExtraSetting[entity] != -1)
+					if(i_WeaponVMTExtraSetting[entity] != -1)
 						continue;
 
 					SetEntityRenderMode(entity, RENDER_NORMAL);
@@ -2812,7 +2808,7 @@ void ReviveAll(bool raidspawned = false,
 					int entity, i;
 					while(TF2U_GetWearable(client, entity, i))
 					{
-						if(entity == EntRefToEntIndex(Armor_Wearable[client]) || i_WeaponVMTExtraSetting[entity] != -1)
+						if(i_WeaponVMTExtraSetting[entity] != -1)
 							continue;
 							
 						SetEntityRenderMode(entity, RENDER_NORMAL);
