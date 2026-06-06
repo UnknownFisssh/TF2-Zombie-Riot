@@ -79,9 +79,15 @@ float BonePosition[3], float BoneAngles[3], int ProjectileType, bool IsCrit)
 public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 #if defined ZR
+
+	if(Bool_IsNonZRMap())
+		DeleteAllPropsBad_NonZrMaps();
+	
+	
 	DeleteShadowsOffZombieRiot();
 	EventRoundStartMusicFilter();
 	b_GameOnGoing = true;
+	WeaponUpdateDo();
 	
 	
 	LastMann = false;
@@ -124,14 +130,13 @@ public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 		Armor_Charge[client] = 0; //reset armor to 0
 	}
 	ReviveAll();
+	for(int client=1; client<=MaxClients; client++)
+	{
+		if(IsValidClient(client))
+			Loadout_DatabaseLoadFavorite(client);
+	}
 	if(RoundStartTime > GetGameTime())
 	{
-		//This asumes it already picked a map, get loadouts while not redoing map logic!
-		for(int client=1; client<=MaxClients; client++)
-		{
-			if(IsValidClient(client))
-				Loadout_DatabaseLoadFavorite(client);
-		}
 		return;
 	}
 	
@@ -163,6 +168,8 @@ public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 public void OnSetupFinished(Event event, const char[] name, bool dontBroadcast)
 {
 	Waves_ApplyCooldown(0.0);
+	if(!Waves_Started())
+		TimeWhenStartedWaveset = GetTime();
 	if(CvarAutoSelectDiff.BoolValue && !Waves_Started())
 	{
 		//Do this only once!
@@ -559,17 +566,25 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	if (dieingstate[client] == 0)
 		DownedOrKilledClient_Feedback(client, EntRefToEntIndex(LastHitRef[client]), f_LatestDamageTaken[client], event.GetInt("damagebits"));
 	Dungeon_PlayerDowned(client);
-	UnequipDispenser(client, true);
+
+	if(!(i_CurrentEquippedPerk[client] & PERK_SEALED))
+		UnequipDispenser(client, true);
+	
 	ArmorDisplayClient(client, true);
 	DataPack pack = new DataPack();
 	pack.WriteCell(GetClientUserId(client));
 	pack.WriteCell(-1);
 	Update_Ammo(pack);
 	Escape_DropItem(client);
-	Armor_Charge[client] = 0; //reset to 0 on death
+
+	if(i_CurrentEquippedPerk[client] & PERK_WHO)
+		Citizen_PlayerReplacement(client, false);
+
+	if(!(i_CurrentEquippedPerk[client] & PERK_SEALED))
+		Armor_Charge[client] = 0; //reset to 0 on death
 
 	//Incase they die, do suit!
-	if(!Rogue_Mode())
+	if(!Rogue_Mode() && !(i_CurrentEquippedPerk[client] & PERK_SEALED))
 	{
 		i_CurrentEquippedPerk[client] = 0;
 		UpdatePerkName(client);
@@ -783,4 +798,27 @@ public Action ChatSetupTipTimer(Handle TimerHandle)
 			SPrintToChat(client, "{green}TIP:{snow} %t",TipText);
 	}
 	return Plugin_Stop;
+}
+
+void DeleteAllPropsBad_NonZrMaps()
+{
+	ServerCommand("sv_cheats 1; nav_load ; sv_cheats 0");
+	for( int i = 1; i <= MAXENTITIES; i++ ) 
+	{
+		if(!IsValidEntity(i))
+			continue;
+		static char classname[36];
+		GetEntityClassname(i, classname, sizeof(classname));
+		if(!StrContains(classname, "prop_door") ||
+		!StrContains(classname, "item_healthkit_") ||
+		!StrContains(classname, "item_ammopack_") ||
+		!StrContains(classname, "item_teamflag") ||
+		!StrContains(classname, "func_regenerate") ||
+		!StrContains(classname, "func_respawnroom") ||
+		!StrContains(classname, "func_respawnroomvisualizer") ||
+		!StrContains(classname, "func_door"))
+		{
+			RemoveEntity(i);
+		}
+	}
 }

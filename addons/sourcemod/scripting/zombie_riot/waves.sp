@@ -117,6 +117,7 @@ static ArrayList VotingMods;
 static bool CanReVote;
 static ArrayList MiniBosses;
 static float Cooldown;
+static bool FirstVoteOfGame;
 void Waves_ApplyCooldown(float fl)
 {
 	Cooldown = fl;
@@ -226,6 +227,7 @@ void Waves_MapStart()
 	{
 		delete Rounds[DeleteLoop];
 	}
+	FirstVoteOfGame = true;
 	delete g_AllocPooledStringCache;
 	SkyNameRestore[0] = 0;
 	FakeMaxWaves = 0;
@@ -790,6 +792,19 @@ void Waves_DisplayHintVote()
 
 			PrintHintTextToAll(buffer);
 		}
+		if(!FirstVoteOfGame)
+		{
+			if(count >= total)
+			{
+				if((VoteEndTime - GetGameTime()) > 5.0)
+					VoteEndTime = GetGameTime() + 5.0;
+			}
+			if((VoteEndTime < GetGameTime()))
+			{
+				MostRecentVoteCancel++;
+				CreateTimer(0.1, Waves_EndVote, MostRecentVoteCancel, TIMER_FLAG_NO_MAPCHANGE);
+			}
+		}
 	}
 }
 
@@ -799,6 +814,7 @@ void Waves_MapEnd()
 	delete Voting;
 	delete VotingMods;
 	Zero(VotedFor);
+	strcopy(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), NULL_STRING);
 	Waves_SetDifficultyName(NULL_STRING);
 	UpdateMvMStatsFrame();
 
@@ -1064,6 +1080,8 @@ void Waves_SetupVote(KeyValues map, bool modifierOnly = false)
 					FormatEx(WhatDifficultySetting, sizeof(WhatDifficultySetting), "%s [%s]", WhatDifficultySetting_Internal, vote.Name);
 					Waves_SetDifficultyName(WhatDifficultySetting);
 
+					strcopy(WhatModifierSetting, sizeof(WhatModifierSetting), vote.Name);
+
 					char funcs[5][64];
 					ExplodeString(vote.Config, ";", funcs, sizeof(funcs), sizeof(funcs[]));
 					
@@ -1110,6 +1128,7 @@ void Waves_SetupVote(KeyValues map, bool modifierOnly = false)
 		if(pos > 3)
 			pos = 3;
 		
+		strcopy(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), vote.Name);
 		Waves_SetDifficultyName(vote.Name);
 		WaveLevel = vote.Level;
 		
@@ -1810,6 +1829,12 @@ void Waves_RoundStart(bool event = false)
 	}
 
 	Waves_UpdateMvMStats();
+	
+	VScriptEvent vevent = new VScriptEvent("ZR_StartSetup");
+	if(vevent)
+	{
+		vevent.Fire();
+	}
 }
 
 void Waves_RoundEnd()
@@ -1984,6 +2009,7 @@ public Action Waves_EndVote(Handle timer, int WhatWasMyCancel)
 				if(highest > 3)
 					highest = 3;
 				
+				strcopy(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), vote.Name);
 				Waves_SetDifficultyName(vote.Name);
 				WaveLevel = vote.Level;
 				
@@ -2043,6 +2069,8 @@ public Action Waves_EndVote(Handle timer, int WhatWasMyCancel)
 					
 					FormatEx(WhatDifficultySetting, sizeof(WhatDifficultySetting), "%s [%s]", WhatDifficultySetting_Internal, vote.Name);
 					Waves_SetDifficultyName(WhatDifficultySetting);
+
+					strcopy(WhatModifierSetting, sizeof(WhatModifierSetting), vote.Name);
 
 					char funcs[5][64];
 					ExplodeString(vote.Config, ";", funcs, sizeof(funcs), sizeof(funcs[]));
@@ -2658,7 +2686,7 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 					}
 				}
 				bool RespawnPeople = true;
-				if(ZR_Get_Modifier() == /*PREFIX_ONESTAND*/ 7)
+				if(ZR_Get_Modifier() == /*PREFIX_ONESTAND*/ 7 && !b_IsAloneOnServer)
 					if(round.Setup < 1.0)
 						RespawnPeople = false;
 						
@@ -2831,15 +2859,21 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 
 					if(!subgame || Construction_FinalBattle() || Dungeon_FinalBattle())
 					{
-						ResetReplications();
-						cvarTimeScale.SetFloat(0.1);
-						CreateTimer(0.5, SetTimeBack);
-						if(!Music_Disabled())
-							EmitCustomToAll("#zombiesurvival/music_win_1.mp3", _, SNDCHAN_STATIC, SNDLEVEL_NONE, _, 2.0);
-						
+						if(i_WaveHasFreeplay < 2)
+						{
+							ResetReplications();
+							cvarTimeScale.SetFloat(0.1);
+							CreateTimer(0.5, SetTimeBack);
+							if(!Music_Disabled())
+								EmitCustomToAll("#zombiesurvival/music_win_1.mp3", _, SNDCHAN_STATIC, SNDLEVEL_NONE, _, 2.0);
 
+							RemoveAllCustomMusic(true);
+						}
+						
 						if(i_WaveHasFreeplay > 0)
 						{
+							FreeplayTimeLimit = GetGameTime() + 3607.5; // one hour and 7.5 extra seconds because of setup time smh
+							
 							if(i_WaveHasFreeplay == 1)
 							{
 								Menu menu = new Menu(Waves_FreeplayVote);
@@ -2849,7 +2883,7 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 								menu.ExitButton = false;
 								menu.DisplayVote(players, total, 30);
 							}
-							else
+							else if(i_WaveHasFreeplay == 2)
 							{
 								for (int client = 1; client <= MaxClients; client++)
 								{
@@ -2874,8 +2908,6 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 
 							roundtime.FloatValue = last;
 						}
-						
-						RemoveAllCustomMusic(true);
 					}
 					else
 					{
@@ -2945,21 +2977,53 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 				}
 				else if(wasLastMann && !Rogue_Mode() && round.Waves.Length)
 				{
-					Cooldown = GetGameTime() + 45.0;
+					char buffer[128];
+					zr_tagblacklist.GetString(buffer, sizeof(buffer));
+					if(StrContains(buffer, "fools26", false) != -1)
+					{
 
-					SpawnTimer(45.0);
-					CreateTimer(45.0, Waves_RoundStartTimer, _, TIMER_FLAG_NO_MAPCHANGE);
+						Cooldown = GetGameTime() + 5.0;
+
+						SpawnTimer(5.0);
+						CreateTimer(5.0, Waves_RoundStartTimer, _, TIMER_FLAG_NO_MAPCHANGE);
+
+						SPrintToChatAll("You were given extra 5 seconds to prepare...");
+					}
+					else
+					{
+						Cooldown = GetGameTime() + 45.0;
+
+						SpawnTimer(45.0);
+						CreateTimer(45.0, Waves_RoundStartTimer, _, TIMER_FLAG_NO_MAPCHANGE);
+
+						SPrintToChatAll("You were given extra 45 seconds to prepare...");
+					}
 					
-					SPrintToChatAll("You were given extra 45 seconds to prepare...");
 				}
 				else if(GiveBreakForPlayers && !Rogue_Mode() && round.Waves.Length)
-				{
-					Cooldown = GetGameTime() + 30.0;
+				{					
+					char buffer[128];
+					zr_tagblacklist.GetString(buffer, sizeof(buffer));
+					if(StrContains(buffer, "fools26", false) != -1)
+					{
 
-					SpawnTimer(30.0);
-					CreateTimer(30.0, Waves_RoundStartTimer, _, TIMER_FLAG_NO_MAPCHANGE);
-					
-					SPrintToChatAll("You were given extra 30 seconds to prepare, as most of your team died......");
+						Cooldown = GetGameTime() + 5.0;
+
+						SpawnTimer(5.0);
+						CreateTimer(5.0, Waves_RoundStartTimer, _, TIMER_FLAG_NO_MAPCHANGE);
+
+						SPrintToChatAll("You were given extra 5 seconds to prepare, as most of your team died......");
+					}
+					else
+					{
+						Cooldown = GetGameTime() + 30.0;
+	
+						SpawnTimer(30.0);
+						CreateTimer(30.0, Waves_RoundStartTimer, _, TIMER_FLAG_NO_MAPCHANGE);
+						
+						SPrintToChatAll("You were given extra 30 seconds to prepare, as most of your team died......");
+						
+					}
 				}
 				else
 				{
@@ -2996,7 +3060,7 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 	{
 		bool EarlyReturn = false;
 		//We are in freeplay, past normal waves.
-		if(i_WaveHasFreeplay == 2)
+		if(i_WaveHasFreeplay)
 			EarlyReturn = Waves_NextFreeplayCall(donotAdvanceRound);
 //		else if(i_WaveHasFreeplay == 1)
 //			//EarlyReturn = Waves_NextSpecialWave();
@@ -3125,7 +3189,6 @@ static Action Freeplay_HudInfoTimer(Handle timer)
 					ShowSyncHudText(client, SyncHud_Notifaction, "%t", "freeplay_start_4");
 				}
 			}
-			FreeplayTimeLimit = GetGameTime() + 3607.5; // one hour and 7.5 extra seconds because of setup time smh
 			CPrintToChatAll("{yellow}IMPORTANT: The faster you beat waves, the more cash AND experience you'll get!");
 			CreateTimer(0.1, Freeplay_ExtraCashTimer, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 			Freeplay_Info = 0;
@@ -3404,8 +3467,10 @@ void Waves_SetSkyName(const char[] skyname = "", int client = 0)
 
 void WaveEndLogicExtra()
 {
-	SeaFounder_ClearnNethersea();
-	VoidArea_ClearnNethersea();
+	if(PapModeDo != PAP_MODE_BUILDING_ONLY)
+		SeaFounder_ClearnAbyss();
+	
+	VoidArea_ClearnAbyss();
 	FallenWarriorGetRandomSeedEachWave();
 	ResetAbilitiesWaveEnd();
 	for(int client; client <= MaxClients; client++)
@@ -4221,6 +4286,7 @@ void Waves_SetReadyStatus(int status, bool stopmusic = true)
 					Music_Stop_All(client);
 				}
 			}	
+			FirstVoteOfGame = false;
 			AlreadySetWaiting = false;
 		}
 		case 1:	// Ready Up
@@ -4380,7 +4446,7 @@ static Address AllocPooledString(const char[] value) {
 
 void Waves_SetDifficultyName(const char[] name)
 {
-	strcopy(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), name);
+//	strcopy(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), name);
 	strcopy(WhatDifficultySetting, sizeof(WhatDifficultySetting), name);
 	WavesUpdateDifficultyName();
 	SteamWorks_UpdateGameTitle();

@@ -14,6 +14,10 @@
 #define MVM_CLASS_FLAG_ALWAYSCRIT		(1 << 4)	// Add Blue Borders
 #define MVM_CLASS_FLAG_SUPPORT_LIMITED	(1 << 5)	// Only Visible When Active
 
+#define ZR_STORE_RESET (1 << 1) //This will reset the entire store to default
+#define ZR_STORE_DEFAULT_SALE (1 << 2) //This  will reset the current normally sold items, and put up a new set of items
+#define ZR_STORE_WAVEPASSED (1 << 3) //any storelogic that should be called when a wave passes
+
 public const int AmmoData[][] =
 {
 	// Price, Ammo
@@ -102,7 +106,18 @@ public const char PerkNames[][] =
 	"Marksman Beer",
 	"Teslar Mule",
 	"Stockpile Stout",
-	"Energy Drink"
+	"Energy Drink",
+
+	"Lover's Wine",
+	"Marathon Shake",
+	"Sealed Boba",
+	"Bloody Ale",
+	"Who Float",
+	
+	"Morning Coffee X",
+	"Hasty Hops X",
+	"Marksman Beer X",
+	"Energy Drink X",
 };
 
 public const char PerkNames_Received[][] =
@@ -115,7 +130,18 @@ public const char PerkNames_Received[][] =
 	"Marksman Beer Received",
 	"Teslar Mule Received",
 	"Stockpile Stout Received",
-	"Energy Drink Received"
+	"Energy Drink Received",
+
+	"Lover's Wine Received",
+	"Marathon Shake Received",
+	"Sealed Boba Received",
+	"Bloody Ale Received",
+	"Who Float Received",
+
+	"Morning Coffee X Received",
+	"Hasty Hops X Received",
+	"Marksman Beer X Received",
+	"Energy Drink X Received",
 };
 
 public const char PerkNames_two_Letter[][] =
@@ -128,7 +154,18 @@ public const char PerkNames_two_Letter[][] =
 	"MB",
 	"TM",
 	"SS",
-	"ED"
+	"ED",
+	
+	"LW",
+	"MS",
+	"SB",
+	"BA",
+	"WF",
+	
+	"MC",
+	"HH",
+	"MB",
+	"ED",
 };
 
 enum
@@ -138,7 +175,7 @@ enum
 	WEAPON_BOUNCING = 3,
 	WEAPON_MAIMMOAB = 4,
 	WEAPON_CRIPPLEMOAB = 5,
-	WEAPON_IRENE = 6,
+	WEAPON_AMPHI = 6,
 	WEAPON_7 = 7,
 	WEAPON_COSMIC_TERROR = 8,
 	WEAPON_9 = 9,
@@ -189,12 +226,12 @@ enum
 	WEAPON_FIRE_WAND = 54,
 	WEAPON_CASINO = 55,
 	WEAPON_ION_BEAM = 56,
-	WEAPON_SEABORNMELEE = 57,
+	WEAPON_DWELLERMELEE = 57,
 	WEAPON_LEPER_MELEE = 58,
 	WEAPON_LEPER_MELEE_PAP = 59,
 	WEAPON_FLAGELLANT_MELEE = 60,
 	WEAPON_FLAGELLANT_HEAL = 61,
-	WEAPON_SEABORN_MISC = 62,
+	WEAPON_DWELLER_MISC = 62,
 	WEAPON_TEXAN_BUISNESS = 63,
 	WEAPON_FLAGELLANT_DAMAGE = 64,
 	WEAPON_FUSION_PAP1 = 65,
@@ -233,7 +270,7 @@ enum
 	WEAPON_GRENADEHUD = 98,
 	WEAPON_WEST_REVOLVER = 99,
 	WEAPON_OBUCH = 100,
-	WEAPON_VICTORIAN_LAUNCHER = 101,
+	WEAPON_VESTAN_LAUNCHER = 101,
 	WEAPON_BOOM_HAMMER = 102,
 	WEAPON_MERCHANT = 103,
 	WEAPON_MERCHANTGUN = 104,
@@ -297,7 +334,9 @@ enum
     WEAPON_KIT_PURGE_ANNAHILATOR = 162,
     WEAPON_KIT_PURGE_MISC = 163,
 	WEAPON_BOMB_AR = 164,
-	WEAPON_BRICK = 165
+	WEAPON_BRICK = 165,
+	WEAPON_BURNINGTHUMB = 166,
+	WEAPON_RED_MIST = 167
 }
 
 enum
@@ -313,15 +352,15 @@ enum
 	Type_BTD,
 	Type_Medieval,
 	Type_COF,
-	Type_Seaborn,
+	Type_Dweller,
 	Type_Expidonsa,
 	Type_Interitus,
 	Type_BlueParadox,
 	Type_Void,
 	Type_Ruina,
-	Type_IberiaExpiAlliance,
+	Type_AlminaExpiAlliance,
 	Type_WhiteflowerSpecial,
-	Type_Victoria,
+	Type_Vesta,
 	Type_Matrix,
 	Type_Aperture,
 	Type_Mutation,
@@ -369,6 +408,7 @@ int i_MVMPopulator;
 //bool RaidMode; 							//Is this raidmode?
 float RaidModeScaling = 0.5;			//what multiplier to use for the raidboss itself?
 float RaidModeTime = 0.0;
+int TimeWhenStartedWaveset = 0;
 float f_TimerTickCooldownRaid = 0.0;
 float f_TimerTickCooldownShop = 0.0;
 float f_FreeplayDamageExtra = 1.0;
@@ -403,6 +443,7 @@ int StartCash;
 float RoundStartTime;
 char WhatDifficultySetting_Internal[32];
 char WhatDifficultySetting[32];
+char WhatModifierSetting[32];
 float healing_cooldown[MAXPLAYERS];
 float f_TimeAfterSpawn[MAXPLAYERS];
 float WoodAmount[MAXPLAYERS];
@@ -435,6 +476,21 @@ float Armor_regen_delay[MAXPLAYERS];
 ConVar mp_disable_respawn_times;
 //int i_SvRollAngle[MAXPLAYERS];
 
+
+enum
+{
+	PAP_MODE_DEFAULT,
+	PAP_MODE_BUILDING_ONLY
+}
+//PAP_MODE_BUILDING_ONLY assumes logic of another gamemode, so we'll reuse that for now.
+enum
+{
+	PERK_MODE_DEFAULT,
+	PERK_MODE_ALL_ALLOW
+}
+
+int PapModeDo = PAP_MODE_DEFAULT;
+int PerkModeDo = PERK_MODE_DEFAULT;
 	
 bool DisableSpawnProtection;
 bool DisableRandomSpawns;
@@ -471,6 +527,7 @@ float f_ChargeTerroriserSniper[MAXENTITIES];
 
 int StoreWeapon[MAXENTITIES];
 int i_HealthBeforeSuit[MAXPLAYERS]={0, ...};
+int i_HealthBeforeSuitMaxHP[MAXPLAYERS]={0, ...};
 float f_HealthBeforeSuittime[MAXPLAYERS]={0.0, ...};
 
 int Level[MAXPLAYERS];
@@ -516,6 +573,7 @@ float fl_MatrixReflect[MAXENTITIES];
 
 #include "npc.sp"	// Global NPC List
 
+#include "vscript.sp"
 #include "aprilfools_settings.sp"
 #include "building.sp"
 #include "database.sp"
@@ -608,7 +666,7 @@ float fl_MatrixReflect[MAXENTITIES];
 #include "custom/weapon_health_hose.sp"
 #include "custom/weapon_superubersaw.sp"
 #include "../shared/custom/joke_medigun_mod_drain_health.sp"
-#include "../shared/custom/weapon_judgement_of_iberia.sp"
+#include "../shared/custom/weapon_judgement_of_almina.sp"
 #include "../shared/custom/weapon_phlog_replacement.sp"
 #include "custom/weapon_cosmic_terror.sp"
 #include "custom/wand/weapon_wand_potions.sp"
@@ -632,7 +690,7 @@ float fl_MatrixReflect[MAXENTITIES];
 #include "custom/weapon_hazard.sp"
 #include "custom/weapon_casino.sp"
 #include "custom/wand/weapon_ion_beam_wand.sp"
-#include "custom/kit_seaborn.sp"
+#include "custom/kit_dweller.sp"
 #include "custom/weapon_class_leper.sp"
 #include "custom/kit_flagellant.sp"
 #include "custom/kit_zealot.sp"
@@ -660,7 +718,7 @@ float fl_MatrixReflect[MAXENTITIES];
 #include "custom/weapon_messenger.sp"
 #include "custom/kit_blacksmith.sp"
 #include "custom/weapon_deagle_west.sp"
-#include "custom/weapon_victorian.sp"
+#include "custom/weapon_vestan.sp"
 #include "custom/weapon_obuch.sp"
 #include "custom/kit_merchant.sp"
 #include "custom/weapon_mg42.sp"
@@ -690,9 +748,9 @@ float fl_MatrixReflect[MAXENTITIES];
 #include "custom/kit_purging.sp"
 #include "custom/weapon_bombplant_smg.sp"
 #include "custom/weapon_guiding_missile.sp"
-
-
-
+#include "custom/kit_heartbroken.sp"
+#include "custom/weapon_burningthumb.sp"
+#include "custom/kit_red_mist.sp"
 
 void ZR_PluginLoad()
 {
@@ -741,6 +799,7 @@ void ZR_PluginStart()
 
 
 	RegConsoleCmd("sm_afk", Command_AFK, "BRB GONNA CLEAN MY MOM'S DISHES");
+	RegConsoleCmd("sm_flop", Command_Flop, "Flop");
 	//RegConsoleCmd("sm_rtd", Command_RTdFail, "Go away.");						//Littearlly cannot support RTD. I will remove this onec i add support for it, but i doubt i ever will.
 	
 	RegAdminCmd("sm_give_cash", Command_GiveCash, ADMFLAG_ROOT, "Give Cash to the Person");
@@ -788,6 +847,7 @@ void ZR_PluginStart()
 	Kritzkrieg_PluginStart();
 	BetWar_PluginStart();
 	Dungeon_PluginStart();
+	VScript_PluginStart();
 	Format(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), "%s", "No Difficulty Selected Yet");
 	Format(WhatDifficultySetting, sizeof(WhatDifficultySetting), "%s", "No Difficulty Selected Yet");
 	
@@ -806,8 +866,21 @@ void ZR_PluginStart()
 	NpcConst2Building_CommandPluginStart();
 }
 
+bool IsNonZRMap = false;
+bool Bool_IsNonZRMap()
+{
+	return IsNonZRMap;
+}
 void ZR_MapStart()
 {
+	IsNonZRMap = false;
+	
+	char mapname[64];
+	GetMapName(mapname, sizeof(mapname));
+	if(StrContains(mapname, "zr_") != 0)
+	{
+		IsNonZRMap = true;
+	}
 	MusicString1.Clear();
 	MusicString2.Clear();
 	MusicSetup1.Clear();
@@ -840,9 +913,11 @@ void ZR_MapStart()
 	Zero(i_NormalBarracks_HexBarracksUpgrades_2);
 	Ammo_Count_Ready = 0;
 	ZombieMusicPlayed = false;
-	Seaborn_OnMapStart();
+	Dweller_OnMapStart();
 	Format(WhatDifficultySetting, sizeof(WhatDifficultySetting), "%s", "No Difficulty Selected Yet");
 	Format(WhatDifficultySetting_Internal, sizeof(WhatDifficultySetting_Internal), "%s", "No Difficulty Selected Yet");
+	Format(WhatModifierSetting, sizeof(WhatModifierSetting), "");
+	PrintToChatAll("WhatModifierSetting reser");
 	WavesUpdateDifficultyName();
 	cvarTimeScale.SetFloat(1.0);
 	GlobalCheckDelayAntiLagPlayerScale = 0.0;
@@ -902,9 +977,9 @@ void ZR_MapStart()
 	Zero(f_TimeAfterSpawn);
 	Zero2(f_ArmorCurrosionImmunity);
 	Zero(fl_MatrixReflect);
-	Reset_stats_Irene_Global();
+	Reset_stats_Amphi_Global();
 	Reset_stats_PHLOG_Global();
-	Irene_Map_Precache();
+	Amphi_Map_Precache();
 	PHLOG_Map_Precache();
 	Cosmic_Map_Precache();
 	Weapon_lantean_Wand_Map_Precache();
@@ -1002,7 +1077,7 @@ void ZR_MapStart()
 	ResetMapStartMessengerWeapon();
 	ResetMapStartWest();
 	Object_MapStart();
-	ResetMapStartVictoria();
+	ResetMapStartVesta();
 	Obuch_Mapstart();
 	Ulpianus_MapStart();
 	Magnesis_Precache();
@@ -1200,7 +1275,7 @@ void ZR_ClientPutInServer(int client)
 
 void ZR_ClientDisconnect(int client)
 {
-	Citizen_PlayerReplacement(client);
+	Citizen_PlayerReplacement(client, true);
 	Native_ZR_OnGetXP(client, XP[client], 1);
 	SetClientTutorialMode(client, false);
 	SetClientTutorialStep(client, 0);
@@ -1208,7 +1283,7 @@ void ZR_ClientDisconnect(int client)
 	Building_ClientDisconnect(client);
 	Queue_ClientDisconnect(client);
 	Vehicle_Exit(client, true, false);
-	Reset_stats_Irene_Singular(client);
+	Reset_stats_Amphi_Singular(client);
 	Reset_stats_PHLOG_Singular(client);
 	Reset_stats_Passanger_Singular(client);
 	Reset_stats_Survival_Singular(client);
@@ -1386,6 +1461,15 @@ public Action Command_AFK(int client, int args)
 		WaitingInQueue[client] = true;
 		SetTeam(client, 1);
 		Queue_ClientDisconnect(client);
+	}
+	return Plugin_Handled;
+}
+public Action Command_Flop(int client, int args)
+{
+	if(client && IsEntityAlive(client))
+	{
+		FreezeNpcInTime(client, 1.5, true);
+		ApplyStatusEffect(client, client, "Ragdolled", 1.5);	
 	}
 	return Plugin_Handled;
 }
@@ -1946,6 +2030,10 @@ public Action Timer_Dieing(Handle timer, int client)
 
 public void Spawn_Bob_Combine(int client)
 {
+	if(PapModeDo == PAP_MODE_BUILDING_ONLY)
+	{
+		return;
+	}
 	float flPos[3], flAng[3];
 	GetClientAbsOrigin(client, flPos);
 	GetClientAbsAngles(client, flAng);
@@ -1999,6 +2087,8 @@ void CheckLastMannStanding(int killed)
 			CurrentPlayers++;
 			if(killed != client && IsPlayerAlive(client) && TeutonType[client] == TEUTON_NONE/* && dieingstate[client] == 0*/)
 			{
+				if(HasSpecificBuff(client, "Call of the Heartbroken"))
+					continue;
 				if(dieingstate[client] == 0)
 				{
 					PlayersLeftNotDowned++;
@@ -2011,13 +2101,15 @@ void CheckLastMannStanding(int killed)
 		LastMann_BeforeLastman = true;
 	}
 }
-void CheckAlivePlayers(int killed=0, int Hurtviasdkhook = 0, bool TestLastman = false, int CheckForLastManAlone = 0)
+void CheckAlivePlayers(int killed=0, int Hurtviasdkhook = 0, bool TestLastman = false, bool CheckDownedState = false)
 {
 	if(!Waves_Started() || Waves_InSetup() || GameRules_GetRoundState() != RoundState_ZombieRiot || Dungeon_CanRespawn())
 	{
+		//This is player check in setup rounds or in stuff that truly should never call lastman
+		Music_EndLastmann();
 		LastMann = false;
 		LastMann_BeforeLastman = false;
-		Yakuza_Lastman(0);
+		applied_lastmann_buffs_once = false;
 		CurrentPlayers = 0;
 		for(int client=1; client<=MaxClients; client++)
 		{
@@ -2030,335 +2122,376 @@ void CheckAlivePlayers(int killed=0, int Hurtviasdkhook = 0, bool TestLastman = 
 		}
 		if(!TestLastman)
 		{
-			
 			CheckIfAloneOnServer(true);
 			return;
 		}
 	}
 	
 	CheckIfAloneOnServer();
+
 	
-	bool alive;
 	LastMann = true;
 	LastMann_BeforeLastman = false;
 	CurrentPlayers = 0;
 	int PlayersLeftNotDowned = 0;
-	int GlobalIntencity_Reduntant;
-	
+	int PlayersLeftAliveHere = 0;
+
 	for(int client=1; client<=MaxClients; client++)
 	{
-		if(IsClientInGame(client) && GetClientTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] != TEUTON_WAITING)
+		if(!IsClientInGame(client))
+			continue;
+		if(GetClientTeam(client) != 2)
+			continue;
+		if(IsFakeClient(client))
+			continue;
+		if(TeutonType[client] == TEUTON_WAITING)
+			continue;
+
+		if(!b_AntiLateSpawn_Allow[client])
+			continue;
+		CurrentPlayers++;
+		if(HasSpecificBuff(client, "Call of the Heartbroken"))
+			continue;
+
+		//Pretend the fowarded player is dead
+		if(killed == client)
+			continue;
+		if(!IsPlayerAlive(client))
+			continue;
+		if(TeutonType[client] != TEUTON_NONE)
+			continue;
+				
+		if(!b_IsAloneOnServer)
 		{
-			if(!b_AntiLateSpawn_Allow[client])
-				continue;
-			CurrentPlayers++;
-			if(killed != client && IsPlayerAlive(client) && TeutonType[client] == TEUTON_NONE/* && dieingstate[client] == 0*/)
-			{
-				if(dieingstate[client] > 0)
-				{
-					GlobalIntencity_Reduntant++;	
-				}
-				else
-				{
-					PlayersLeftNotDowned++;
-				}
-				if(!alive)
-				{
-					alive = true;
-				}
-				else if(LastMann)
-				{
-					LastMann = false;
-					Yakuza_Lastman(0);
-				}
-			}
-			else
-			{
-				GlobalIntencity_Reduntant++;
-			}
-			
-			if(Hurtviasdkhook != 0)
-			{
-				LastMann_BeforeLastman = true;
-				LastMann = true;
-				LastMannScreenEffect = false;
-			}
-		}
-	}
-	/*
-		This is so the last person alive, who is not dead, but not downed
-		i.e. last man up
-		PlayersLeftNotDowned
-
-	*/
-	if(LastMann && !GlobalIntencity_Reduntant) //Make sure if they are alone, it wont play last man music.
-	{
-		//if its above 700, it just assumes we triggered lastman
-		if(i_AmountDowned[CheckForLastManAlone] < 700)
-		{
-			PlayersLeftNotDowned = 99;
-			LastMann_BeforeLastman = false;
-			LastMann = false;
-		}
-	}
-
-	if(PlayersLeftNotDowned == 1)
-	{
-		LastMann_BeforeLastman = true;
-	}
-
-	if(TestLastman)
-	{
-		LastMann = true;
-		LastMannScreenEffect = false;
-		applied_lastmann_buffs_once = false;
-	}
-
-	if(LastMann)
-	{
-		static bool Died[MAXPLAYERS];
-		for(int client=1; client<=MaxClients; client++)
-		{
-			Died[client] = false;
-			if(IsClientInGame(client) && GetClientTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] != TEUTON_WAITING)
-			{
-				if(!b_AntiLateSpawn_Allow[client])
-					continue;
-				if((killed != client || Hurtviasdkhook != client) && IsPlayerAlive(client) && TeutonType[client] == TEUTON_NONE && dieingstate[client] > 0)
-				{
-					Died[client] = true;
-					SDKHooks_TakeDamage(client, client, client, 99999.0, DMG_TRUEDAMAGE, _, _, _, true);
-					ForcePlayerSuicide(client);
-				}
-			}
-		}
-
-		if(Rogue_NoLastman())
-		{
-			LastMann = false;
+			if(dieingstate[client] == 0)
+				PlayersLeftNotDowned++;
+			//normal server rules
+			PlayersLeftAliveHere++;
 		}
 		else
 		{
-			if(!applied_lastmann_buffs_once)
+			//if they are alone, then..
+			//if its above 700, it just assumes we triggered lastman
+			if(i_AmountDowned[client] < 700)
 			{
-				CauseFadeInAndFadeOut(0,1.0,1.0,1.0, "235");
-				PlayTeamDeadSound();
-				Zero(delay_hud); //Allow the hud to immedietly update
-				for(int entitycount; entitycount<i_MaxcountNpcTotal; entitycount++)
-				{
-					int entity = EntRefToEntIndexFast(i_ObjectsNpcsTotal[entitycount]);
-					if(IsValidEntity(entity) && GetTeam(entity) != TFTeam_Red)
-					{
-						FreezeNpcInTime(entity, 3.0, true);
-						IncreaseEntityDamageTakenBy(entity, 0.000001, 3.0);
-					}
-				}
-				RaidModeTime += 3.0;
+				PlayersLeftNotDowned = 99;
+				PlayersLeftAliveHere = 99;
 			}
-
-			ExcuteRelay("zr_lasthuman");
-			for(int client=1; client<=MaxClients; client++)
+			else
 			{
-				if(IsClientInGame(client) && GetClientTeam(client)==2 && TeutonType[client] == TEUTON_NONE)
-				{
-					if(IsPlayerAlive(client) && !applied_lastmann_buffs_once && !Died[client])
-					{
-						if(dieingstate[client] > 0)
-						{
-							dieingstate[client] = 0;
-							Store_ApplyAttribs(client);
-							SDKCall_SetSpeed(client);
-							int entity, i;
-							while(TF2U_GetWearable(client, entity, i))
-							{
-								if(i_WeaponVMTExtraSetting[entity] != -1)
-									continue;
-
-								SetEntityRenderMode(entity, RENDER_NORMAL);
-								SetEntityRenderColor(entity, 255, 255, 255, 255);
-							}
-							SetEntityRenderMode(client, RENDER_NORMAL);
-							SetEntityRenderColor(client, 255, 255, 255, 255);
-							SetEntityCollisionGroup(client, 5);
-						}
-
-						if(Yakuza_IsNotInJoint(client))
-						{
-							Yakuza_AddCharge(client, 99999);
-							Yakuza_Lastman(1);
-							CPrintToChatAll("{crimson}Something awakens inside %N.......",client);
-						}
-						if(Zealot_Sugmar(client))
-						{
-							Yakuza_Lastman(2);
-							CPrintToChatAll("{crimson}%N descended into a fanatical worship of Sigmar, and set out to cleanse the unrighteous themselves.",client);
-						}
-						if(Fractal_LastMann(client))
-						{
-							//get some cool line.
-							Max_Fractal_Crystals(client);
-							CPrintToChatAll("{purple}Twirl{crimson}'s Essence enters %N...",client);
-							Yakuza_Lastman(3);
-						}
-						if(Wkit_Soldin_LastMann(client))
-						{
-							ChargeSoldineMeleeHit(client,client,true, 999.9);
-							ChargeSoldineRocketJump(client, client, true, 999.9);
-							CPrintToChatAll("{crimson}Expidonsa Activates %N's emergency protocols...",client);
-							Yakuza_Lastman(4);
-						}
-						if(Purnell_Lastman(client))
-						{
-							CPrintToChatAll("{crimson}%N gets filled with the unyielding desire to avenge his patients.",client);
-							Yakuza_Lastman(5);
-						}
-						if(Blacksmith_Lastman(client))
-						{
-							CPrintToChatAll("{crimson}%N Seems to be completly and utterly screwed.",client);
-							Yakuza_Lastman(6);
-						}
-						if(BlitzKit_LastMann(client))
-						{
-							CPrintToChatAll("{crimson}The Machine Within %N screams: FOR VICTORY",client);
-							Yakuza_Lastman(7);
-						}
-						if(IsFlaggilant(client) || IsClientLeper(client))
-						{
-							if(IsFlaggilant(client))
-								CPrintToChatAll("{crimson}The undying soul %N refuses to ever die.",client);
-							else if(IsClientLeper(client))
-								CPrintToChatAll("{crimson}The King %N cannot stand this any longer..!",client);
-								
-							int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-							if(weapon != -1)
-							{
-								Saga_ChargeReduction(client, weapon, 999.9);
-							}
-							Yakuza_Lastman(8);
-						}
-						if(SeaMelee_IsSeaborn(client))
-						{
-							CPrintToChatAll("{crimson}The sea entirely corrupts %N.",client);
-							Yakuza_Lastman(9);
-						}
-						if(Merchant_IsAMerchant(client))
-						{
-							CPrintToChatAll("{crimson}The merchant knows not who to trade with... Thus massively enrages.",client);
-							Yakuza_Lastman(10);
-						}
-						if(Is_Cheesed_Up(client))
-						{
-							CPrintToChatAll("{darkviolet}%N decides to inject themselves with plasma as a last resort...", client);
-							Yakuza_Lastman(11);
-						}
-						/*
-						if(Sigil_LastMann(client))
-						{
-							CPrintToChatAll("{blue}Diabolus Ex Machina.",client);
-							Yakuza_Lastman(12);
-						}
-						*/
-						if(Wkit_Omega_LastMann(client))
-						{
-							CPrintToChatAll("{gold}%N is now alone, however giving up isn't in their vocabulary.",client);
-							Yakuza_Lastman(13);
-						}
-						if(PurgeKit_LastMann(client))
-						{
-							CPrintToChatAll("{crimson}%N's purging protocol activates.",client);
-							Yakuza_Lastman(14);
-						}
-						
-						for(int i=1; i<=MaxClients; i++)
-						{
-							if(IsClientInGame(i) && !IsFakeClient(i))
-							{
-								if(!BlockLastmanMusicRaidboss(i))
-								{
-									Music_Stop_All(i);
-									SetMusicTimer(i, GetTime() + 2); //give them 2 seconds, long enough for client predictions to fade.
-								}
-								SetEntPropEnt(i, Prop_Send, "m_hObserverTarget", client);
-							}
-						}
-						
-						/*
-						for(int i=1; i<=MaxClients; i++)
-						{
-							if(IsClientInGame(i) && !IsFakeClient(i))
-							{
-								SendConVarValue(i, sv_cheats, "1");
-							}
-						}
-						
-						cvarTimeScale.SetFloat(0.1);
-						CreateTimer(0.3, SetTimeBack);
-						*/
-					
-						applied_lastmann_buffs_once = true;
-						
-						SetHudTextParams(-1.0, -1.0, 3.0, 255, 0, 0, 255);
-						if(b_IsAloneOnServer)
-							ShowHudText(client, -1, "%T", "Last Alive Alone", client);
-						else
-							ShowHudText(client, -1, "%T", "Last Alive", client);
-
-						int MaxHealth;
-						MaxHealth = SDKCall_GetMaxHealth(client) * 2;
-						if(b_IsAloneOnServer)
-							MaxHealth /= 2;
-							
-						if(i_HealthBeforeSuit[client] == 0)
-						{
-							SetEntProp(client, Prop_Send, "m_iHealth", MaxHealth);
-						}
-						//if in quantum suit, dont.
-
-						int Armor_Max = MaxArmorCalculation(Armor_Level[client], client, 1.0);
-						if(b_IsAloneOnServer)
-							Armor_Max /= 2;
-
-						Armor_Charge[client] = Armor_Max;
-						GiveCompleteInvul(client, 3.0);
-					}
-				}
+				PlayersLeftAliveHere = 1;
+				PlayersLeftNotDowned = 1;
+				LastMann_BeforeLastman = false;
+				LastMann = true;
 			}
 		}
 	}
-	else
-		applied_lastmann_buffs_once = false;
 	
-	if(!alive)
+
+	if(!applied_lastmann_buffs_once)
 	{
-		if (Bob_Exists)
+		if(PlayersLeftNotDowned == 1)
 		{
-			Bob_Exists = false;
-			int bob_index = EntRefToEntIndex(Bob_Exists_Index);
-			NPC_Despawn_bob(bob_index);
-			Bob_Exists_Index = -1;
+			LastMann_BeforeLastman = true;
+			if(!CheckDownedState)
+			{
+				if(PlayersLeftAliveHere > 1)
+				{
+					LastMannScreenEffect = false;
+					//there are players left, dont trigger lastman
+					LastMann = false;
+				}
+			}
+		}
+		else	
+		{
+			LastMannScreenEffect = false;
+			//there are players left, dont trigger lastman
+			LastMann = false;
+		}
+			
+
+		//force lastman
+		if(TestLastman)
+		{
+			LastMann = true;
+			LastMannScreenEffect = false;
+			applied_lastmann_buffs_once = false;
 		}
 
-		bool rogue = Rogue_Mode();
-		if(rogue)
-			rogue = !Rogue_BattleLost();
+		if(!LastMann)
+			applied_lastmann_buffs_once = false;
+
+		if(LastMann)
+		{	
+			TriggerLastmanLogic(killed, Hurtviasdkhook);
+		}
+	}
 	
+	if(PlayersLeftNotDowned)
+		return;
+
+	if (Bob_Exists)
+	{
+		Bob_Exists = false;
+		int bob_index = EntRefToEntIndex(Bob_Exists_Index);
+		NPC_Despawn_bob(bob_index);
+		Bob_Exists_Index = -1;
+	}
+
+	bool rogue = Rogue_Mode();
+	if(rogue)
+		rogue = !Rogue_BattleLost();
+
+	if(!rogue)
+	{
+		ForcePlayerLoss(false);
+	}
+
+	if(killed)
+	{
+		Music_RoundEnd(killed, !rogue);
 		if(!rogue)
 		{
-			ForcePlayerLoss(false);
-		}
-
-		if(killed)
-		{
-			Music_RoundEnd(killed, !rogue);
-			if(!rogue)
-			{
-				CreateTimer(5.0, Remove_All, _, TIMER_FLAG_NO_MAPCHANGE);
-			//	RequestFrames(Remove_All, 300);
-			}
+			CreateTimer(5.0, Remove_All, _, TIMER_FLAG_NO_MAPCHANGE);
+		//	RequestFrames(Remove_All, 300);
 		}
 	}
 }
 
+void TriggerLastmanLogic(int killed, int Hurtviasdkhook)
+{
+	static bool Died[MAXPLAYERS];
+	for(int client=1; client<=MaxClients; client++)
+	{
+		Died[client] = false;
+		if(IsClientInGame(client) && GetClientTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] != TEUTON_WAITING)
+		{
+			if(!b_AntiLateSpawn_Allow[client])
+				continue;
+			if((killed != client || Hurtviasdkhook != client) && IsPlayerAlive(client) && TeutonType[client] == TEUTON_NONE && dieingstate[client] > 0)
+			{
+				Died[client] = true;
+				SDKHooks_TakeDamage(client, client, client, 99999.0, DMG_TRUEDAMAGE, _, _, _, true);
+				ForcePlayerSuicide(client);
+			}
+		}
+	}
+
+	//no lastman buffs.
+	bool ApplyLastmanBuffs = true;
+	if(Rogue_NoLastman())
+		ApplyLastmanBuffs = false;
+
+	if(!applied_lastmann_buffs_once)
+	{
+		CauseFadeInAndFadeOut(0,1.0,1.0,1.0, "235");
+		PlayTeamDeadSound();
+		Zero(delay_hud); //Allow the hud to immedietly update
+		if(ApplyLastmanBuffs)
+		{
+			for(int entitycount; entitycount<i_MaxcountNpcTotal; entitycount++)
+			{
+				int entity = EntRefToEntIndexFast(i_ObjectsNpcsTotal[entitycount]);
+				if(IsValidEntity(entity) && GetTeam(entity) != TFTeam_Red)
+				{
+					FreezeNpcInTime(entity, 3.0, true);
+					IncreaseEntityDamageTakenBy(entity, 0.000001, 3.0);
+				}
+			}
+			RaidModeTime += 3.0;
+		}
+	}
+
+	ExcuteRelay("zr_lasthuman");
+	for(int client=1; client<=MaxClients; client++)
+	{
+		if(IsClientInGame(client) && GetClientTeam(client)==2 && TeutonType[client] == TEUTON_NONE)
+		{
+			if(IsPlayerAlive(client) && !applied_lastmann_buffs_once && !Died[client])
+			{
+				f_OneShotProtectionTimer[client] = 0.0; // 60 second cooldown
+				if(dieingstate[client] > 0)
+				{
+					dieingstate[client] = 0;
+					Store_ApplyAttribs(client);
+					SDKCall_SetSpeed(client);
+					int entity, i;
+					while(TF2U_GetWearable(client, entity, i))
+					{
+						if(i_WeaponVMTExtraSetting[entity] != -1)
+							continue;
+
+						SetEntityRenderMode(entity, RENDER_NORMAL);
+						SetEntityRenderColor(entity, 255, 255, 255, 255);
+					}
+					SetEntityRenderMode(client, RENDER_NORMAL);
+					SetEntityRenderColor(client, 255, 255, 255, 255);
+					SetEntityCollisionGroup(client, 5);
+				}
+
+				if(Yakuza_IsNotInJoint(client))
+				{
+					Yakuza_AddCharge(client, 99999);
+					Yakuza_Lastman(1);
+					CPrintToChatAll("{crimson}Something awakens inside %N.......",client);
+				}
+				if(Zealot_Sugmar(client))
+				{
+					Yakuza_Lastman(2);
+					CPrintToChatAll("{crimson}%N descended into a fanatical worship of Sigmar, and set out to cleanse the unrighteous themselves.",client);
+				}
+				if(Fractal_LastMann(client))
+				{
+					//get some cool line.
+					Max_Fractal_Crystals(client);
+					CPrintToChatAll("{purple}Twirl{crimson}'s Essence enters %N...",client);
+					Yakuza_Lastman(3);
+				}
+				if(Wkit_Soldin_LastMann(client))
+				{
+					ChargeSoldineMeleeHit(client,client,true, 999.9);
+					ChargeSoldineRocketJump(client, client, true, 999.9);
+					CPrintToChatAll("{crimson}Expidonsa Activates %N's emergency protocols...",client);
+					Yakuza_Lastman(4);
+				}
+				if(Purnell_Lastman(client))
+				{
+					CPrintToChatAll("{crimson}%N gets filled with the unyielding desire to avenge his patients.",client);
+					Yakuza_Lastman(5);
+				}
+				if(Blacksmith_Lastman(client))
+				{
+					CPrintToChatAll("{crimson}%N Seems to be completly and utterly screwed.",client);
+					Yakuza_Lastman(6);
+				}
+				if(BlitzKit_LastMann(client))
+				{
+					CPrintToChatAll("{crimson}The Machine Within %N screams: FOR VICTORY",client);
+					Yakuza_Lastman(7);
+				}
+				if(IsFlaggilant(client) || IsClientLeper(client))
+				{
+					if(IsFlaggilant(client))
+						CPrintToChatAll("{crimson}The undying soul %N refuses to ever die.",client);
+					else if(IsClientLeper(client))
+						CPrintToChatAll("{crimson}The King %N cannot stand this any longer..!",client);
+						
+					int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+					if(weapon != -1)
+					{
+						Saga_ChargeReduction(client, weapon, 999.9);
+					}
+					Yakuza_Lastman(8);
+				}
+				if(SeaMelee_IsDweller(client))
+				{
+					CPrintToChatAll("{crimson}The sea entirely corrupts %N.",client);
+					Yakuza_Lastman(9);
+				}
+				if(Merchant_IsAMerchant(client))
+				{
+					CPrintToChatAll("{crimson}The merchant knows not who to trade with... Thus massively enrages.",client);
+					Yakuza_Lastman(10);
+				}
+				if(Is_Cheesed_Up(client))
+				{
+					CPrintToChatAll("{darkviolet}%N decides to inject themselves with plasma as a last resort...", client);
+					Yakuza_Lastman(11);
+				}
+				/*
+				if(Sigil_LastMann(client))
+				{
+					CPrintToChatAll("{blue}Diabolus Ex Machina.",client);
+					Yakuza_Lastman(12);
+				}
+				*/
+				if(Wkit_Omega_LastMann(client))
+				{
+					CPrintToChatAll("{gold}%N is now alone, however giving up isn't in their vocabulary.",client);
+					Yakuza_Lastman(13);
+				}
+				if(PurgeKit_LastMann(client))
+				{
+					CPrintToChatAll("{crimson}%N's purging protocol activates.",client);
+					Yakuza_Lastman(14);
+				}
+				if(IsHeartBroken(client))
+				{
+					CPrintToChatAll("{purple}What kindled this flame of wrath that burns within %N..?",client);
+					HeartBrokenMassRevive(client);
+					Yakuza_Lastman(15);
+				}
+				if(IsDistorted(client))
+				{
+					if(Abno_Pages[client] & ABNORMPAGE_MOSB)//special lms text
+					{
+						CPrintToChatAll("{maroon}The mountain of dead bodies resonates with {darkgrey}%N...",client);
+					}
+					else//normal lms
+					{
+						CPrintToChatAll("{darkgrey}Even with all this strength {fullred}%N {darkgrey}still failed to protect everyone",client);
+					}
+					Yakuza_Lastman(16);
+				}
+				
+				
+				for(int i=1; i<=MaxClients; i++)
+				{
+					if(IsClientInGame(i) && !IsFakeClient(i))
+					{
+						if(!BlockLastmanMusicRaidboss(i))
+						{
+							Music_Stop_All(i);
+							SetMusicTimer(i, GetTime() + 2); //give them 2 seconds, long enough for client predictions to fade.
+						}
+						SetEntPropEnt(i, Prop_Send, "m_hObserverTarget", client);
+					}
+				}
+			
+				applied_lastmann_buffs_once = true;
+				
+				SetHudTextParams(-1.0, -1.0, 3.0, 255, 0, 0, 255);
+				if(b_IsAloneOnServer)
+					ShowHudText(client, -1, "%T", "Last Alive Alone", client);
+				else
+					ShowHudText(client, -1, "%T", "Last Alive", client);
+
+				int MaxHealth;
+				MaxHealth = SDKCall_GetMaxHealth(client) * 2;
+				if(b_IsAloneOnServer)
+					MaxHealth /= 2;
+				if(ApplyLastmanBuffs)
+				{
+					
+					int Armor_Max = MaxArmorCalculation(Armor_Level[client], client, 1.0);
+					if(b_IsAloneOnServer)
+						Armor_Max /= 2;
+
+					Armor_Charge[client] = Armor_Max;
+					GiveCompleteInvul(client, 3.0);
+				}
+				else //reaction time?
+					GiveCompleteInvul(client, 1.0);
+				
+					
+				if(i_HealthBeforeSuit[client] == 0)
+				{
+					if(ApplyLastmanBuffs)
+						SetEntProp(client, Prop_Send, "m_iHealth", MaxHealth);
+				}
+				else
+				{
+					if(b_IsAloneOnServer)
+						i_HealthBeforeSuit[client] = i_HealthBeforeSuitMaxHP[client];
+					else
+						i_HealthBeforeSuit[client] = i_HealthBeforeSuitMaxHP[client] * 2;
+				}
+				//if in quantum suit, dont.
+			}
+		}
+	}
+}
 //Revival raid spam
 public void SetHealthAfterReviveRaid(int ref)
 {
@@ -2405,7 +2538,10 @@ public void SetHealthAfterReviveAgain(int ref)
 	int client = EntRefToEntIndex(ref);
 	if(IsValidClient(client))
 	{
-		SetEntityHealth(client, 50);
+		if(PapModeDo == PAP_MODE_BUILDING_ONLY)
+			SetEntityHealth(client, SDKCall_GetMaxHealth(client));
+		else
+			SetEntityHealth(client, 50);
 	}
 }
 
@@ -2729,6 +2865,8 @@ void ReviveAll(bool raidspawned = false,
 	
 	if(ZR_Get_Modifier() == PREFIX_ONESTAND && !IsSetupRevive)
 		return;
+
+	applied_lastmann_buffs_once = false;
 	for(int client=1; client<=MaxClients; client++)
 	{
 		CheckClientLateJoin(client, false);
@@ -2738,6 +2876,17 @@ void ReviveAll(bool raidspawned = false,
 		b_HasBeenHereSinceStartOfWave[client] = false;
 		if(IsClientInGame(client))
 		{
+			if(dieingstate[client] > 0)
+			{
+				if(PapModeDo == PAP_MODE_BUILDING_ONLY)
+					continue;
+			}
+			if(HasSpecificBuff(client, "Call of the Heartbroken"))
+			{
+				RemoveSpecificBuff(client, "Call of the Heartbroken Internal");
+				RemoveSpecificBuff(client, "Call of the Heartbroken");
+				RemoveSpecificBuff(client, "Coffin's Return");
+			}
 			int glowentity = EntRefToEntIndex(i_DyingParticleIndication[client][0]);
 			if(glowentity > MaxClients)
 				RemoveEntity(glowentity);
@@ -2836,8 +2985,7 @@ void ReviveAll(bool raidspawned = false,
 		}
 	}
 	
-	if(ZR_Get_Modifier() == PREFIX_ONESTAND)
-	
+	BurningThumb_WaveEnd();
 	Music_EndLastmann();
 	CheckAlivePlayers();
 	if(Dungeon_Mode() && !Const2_DontRespawnBuildings)
@@ -3214,6 +3362,47 @@ void ForcePlayerWin(bool fakeout = false)
 
 	if(!fakeout)
 	{
+		
+		// Send info through a forward
+		ArrayList playerList = new ArrayList();
+		for (int client = 1; client <= MaxClients; client++)
+		{
+			if (!b_IsPlayerABot[client] && IsClientInGame(client) && !IsFakeClient(client) && GetTeam(client) == 2)
+				playerList.Push(client);
+		}
+		ArrayList RogueitemNames = new ArrayList(64);
+		if(ZR_GetSpecialMode() == Mode_Rogue1 || 
+		ZR_GetSpecialMode() == Mode_Rogue2 ||
+		ZR_GetSpecialMode() == Mode_Rogue3 || 
+		ZR_GetSpecialMode() == Mode_Construction || 
+		ZR_GetSpecialMode() == Mode_Construction2)
+		{
+			Artifact artifact;
+			int length = CurrentCollection ? CurrentCollection.Length : 0;
+			if(length)
+			{
+				for(int i; i < length; i++)
+				{
+					int index = CurrentCollection.Get(i);
+					Artifacts.GetArray(index, artifact);
+					if(!artifact.Hidden)
+					{
+						RogueitemNames.PushString(artifact.Name);
+					}
+				}
+			}
+
+		}
+		
+		char waveset[64], modifier[64];
+		strcopy(waveset, sizeof(waveset), WhatDifficultySetting_Internal);
+		strcopy(modifier, sizeof(modifier), WhatModifierSetting);
+		int TimeTookToBeat = GetTime() - TimeWhenStartedWaveset;
+		Native_ZR_OnWinInfo(playerList, waveset, modifier, TimeTookToBeat, CurrentRound[0], RogueitemNames);
+
+		delete playerList;
+		delete RogueitemNames;
+
 		MusicString1.Clear();
 		MusicString2.Clear();
 		MusicSetup1.Clear();
@@ -3229,6 +3418,8 @@ void ForcePlayerWin(bool fakeout = false)
 		AcceptEntityInput(entity, "RoundWin");
 		RemoveAllCustomMusic();
 		Native_ZR_OnWinTeam(TFTeam_Red);
+
+		WeaponUpdateDo();
 	}
 }
 
@@ -3269,6 +3460,7 @@ void ForcePlayerLoss(bool WasRaid = true)
 	MusicWin.Clear();
 	MusicLoss.Clear();
 	RaidMusicSpecial1.Clear();
+	WeaponUpdateDo();
 }
 
 
@@ -3291,13 +3483,16 @@ stock void SPrintToChatAll(const char[] message, any ...)
 //IF you disable ingame downloads, it will download all these files nontherless!
 void ZR_FastDownloadForce()
 {
+	//always
+	PrecacheSoundCustom("#zombiesurvival/red_mist_lastman.mp3",_,1);
 	//do not download!!
 	if(FileNetwork_Enabled())
 		return;
 
+	PrecacheHeartbrokenMusic();
 	PrecacheSharedDarkestMusic();
 	PrecacheTwirlMusic();
-	SeaBornMusicDo();
+	DwellerMusicDo();
 	PurnellMusicOst();
 	PrecacheBlitzMusic();
 	SoldineKitDownload();
@@ -3307,6 +3502,7 @@ void ZR_FastDownloadForce()
 	Cheese_PrecacheMusic();
 	Core_PrecacheGlobalCustom();
 	PrecacheMusicZr();
+	PrecacheRedMistMusic();
 }
 
 
@@ -3339,7 +3535,7 @@ public Action Command_SetTeamCustom(int client, int args)
 	
 	for(int target; target<matches; target++)
 	{
-		PrintToChatAll("target %i, TeamSet %i",targets[target], teamset);
+		PrintToChat(targets[target], "You are on team: %i",teamset);
 		SetTeam(targets[target], teamset);
 	}
 	
@@ -3518,4 +3714,24 @@ void ShowCustomFogToClient(int client)
 	
 	SetVariantString(buffer);
 	AcceptEntityInput(client, "SetFogController");
+}
+
+
+bool ZR_AllowLastman()
+{
+	if(Rogue_Mode() || Dungeon_Mode())
+		return true;
+	if(Classic_Mode() || Construction_Mode())
+		return false;
+
+	//during raidbosses, allow lastman (that disallow buildings)
+	if(RaidbossIgnoreBuildingsLogic(3))
+		return true;
+		
+	return false;
+}
+
+void WeaponUpdateDo()
+{
+	RedMist_ResetAbnorms();
 }

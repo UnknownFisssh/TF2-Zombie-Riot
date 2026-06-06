@@ -333,6 +333,7 @@ methodmap VoidUnspeakable < CClotBody
 			RaidModeTime = GetGameTime(npc.index) + 200.0;
 			RaidBossActive = EntIndexToEntRef(npc.index);
 			RaidAllowsBuildings = false;
+			RaidAllowLastman = true;
 			float value;
 			char buffers[3][64];
 			ExplodeString(data, ";", buffers, sizeof(buffers), sizeof(buffers[]));
@@ -554,7 +555,7 @@ public void VoidUnspeakable_ClotThink(int iNPC)
 			//always leaves creep onto the floor if enraged
 			GetEntPropVector(npc.index, Prop_Data, "m_vecAbsOrigin", ProjectileLoc);
 			ProjectileLoc[2] += 5.0;
-			VoidArea_SpawnNethersea(ProjectileLoc);
+			VoidArea_SpawnAbyss(ProjectileLoc);
 		}
 	}
 	if(LastMann && !AlreadySaidLastmann)
@@ -695,7 +696,7 @@ public Action VoidUnspeakable_OnTakeDamage(int victim, int &attacker, int &infli
 			float ProjectileLoc[3];	
 			GetEntPropVector(npc.index, Prop_Data, "m_vecAbsOrigin", ProjectileLoc);
 			ProjectileLoc[2] += 5.0;
-			VoidArea_SpawnNethersea(ProjectileLoc);
+			VoidArea_SpawnAbyss(ProjectileLoc);
 			switch(GetRandomInt(1,2))
 			{
 				case 1:
@@ -746,7 +747,7 @@ bool VoidUnspeakable_TeleToAnyAffectedOnVoid(VoidUnspeakable npc)
 		hullcheckmins = view_as<float>( { -30.0, -30.0, 0.0 } );
 		for(int EnemyLoop; EnemyLoop < MAXENTITIES; EnemyLoop ++)
 		{
-			if(IsValidEnemy(npc.index, EnemyLoop, true, true) && VoidArea_TouchingNethersea(EnemyLoop))
+			if(IsValidEnemy(npc.index, EnemyLoop, true, true) && VoidArea_TouchingAbyss(EnemyLoop))
 			{
 				//try to not always teleport to the same guy.
 				if(GetRandomFloat(0.0,1.0) > 0.1)
@@ -843,7 +844,7 @@ bool VoidUnspeakable_MatterAbsorber(VoidUnspeakable npc, float gameTime)
 		float ProjectileLoc[3];
 		GetEntPropVector(npc.index, Prop_Data, "m_vecAbsOrigin", ProjectileLoc);
 		ProjectileLoc[2] += 5.0;
-		VoidArea_SpawnNethersea(ProjectileLoc);
+		VoidArea_SpawnAbyss(ProjectileLoc);
 
 		HealEntityGlobal(npc.index, npc.index, flMaxhealth, 1.0, 0.0, HEAL_SELFHEAL);
 		float ProjLoc[3];
@@ -981,7 +982,7 @@ bool VoidUnspeakable_MatterAbsorber(VoidUnspeakable npc, float gameTime)
 		float ProjectileLoc[3];
 		GetEntPropVector(npc.index, Prop_Data, "m_vecAbsOrigin", ProjectileLoc);
 		ProjectileLoc[2] += 5.0;
-		VoidArea_SpawnNethersea(ProjectileLoc);
+		VoidArea_SpawnAbyss(ProjectileLoc);
 		npc.m_flRangedArmor = 0.75;
 		npc.m_flMeleeArmor = 1.5;	
 

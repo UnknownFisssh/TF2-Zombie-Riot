@@ -124,6 +124,7 @@ ConVar CvarKickPlayersAt;
 ConVar CvarMaxPlayerAlive;
 ConVar zr_interactforcereload;
 bool BlockOtherRaidMusic = false;
+bool RemoveRagdollDo = false;
 //ConVar CvarDebugOffset;
 
 int CurrentEntities;
@@ -183,10 +184,10 @@ bool b_MarkForReload = false; //When you wanna reload the plugin on map change..
 
 #include "global_arrays.sp"
 //This model is used to do custom models for npcs, mainly so we can make cool animations without bloating downloads
-#define COMBINE_CUSTOM_MODEL 		"models/zombie_riot/combine_attachment_police_230.mdl"
+#define COMBINE_CUSTOM_MODEL 		"models/zombie_riot/combine_attachment_police_231.mdl"
 
 //model uses self made IK rigs, to not break the top stuff.
-#define COMBINE_CUSTOM_2_MODEL 		"models/zombie_riot/combine_attachment_police_secondmodel_24.mdl"
+#define COMBINE_CUSTOM_2_MODEL 		"models/zombie_riot/combine_attachment_police_secondmodel_25.mdl"
 
 #define WEAPON_CUSTOM_WEAPONRY_1 	"models/zombie_riot/weapons/custom_weaponry_1_57.mdl"
 /*
@@ -672,7 +673,6 @@ float fl_Extra_RangedArmor[MAXENTITIES] = {1.0, ...};
 float fl_Extra_Speed[MAXENTITIES] = {1.0, ...};
 float fl_Extra_Damage[MAXENTITIES] = {1.0, ...};
 float fl_GibVulnerablity[MAXENTITIES] = {1.0, ...};
-float f_RoleplayTalkLimit[MAXENTITIES] = {0.0, ...};
 
 bool b_ScalesWithWaves[MAXENTITIES]; //THIS WAS INSIDE THE NPCS!
 
@@ -923,6 +923,7 @@ public void OnLibraryAdded(const char[] name)
 #if defined ZR
 	FileNetwork_LibraryAdded(name);
 	SteamWorks_LibraryAdded(name);
+	VScript_LibraryAdded(name);
 #endif
 }
 
@@ -931,6 +932,7 @@ public void OnLibraryRemoved(const char[] name)
 #if defined ZR
 	FileNetwork_LibraryRemoved(name);
 	SteamWorks_LibraryRemoved(name);
+	VScript_LibraryRemoved(name);
 #endif
 }
 
@@ -1275,6 +1277,7 @@ public void OnMapEnd()
 	Spawns_MapEnd();
 	Vehicle_MapEnd();
 	NPC_MapEnd();
+	VScript_MapEnd();
 #endif
 
 #if defined RPG
@@ -1582,7 +1585,6 @@ public void OnClientPutInServer(int client)
 	f_ClientConnectTime[client] = GetGameTime() + 30.0;
 	//do cooldown upon connection.
 	f_ClientInvul[client] = 0.0;
-	f_RoleplayTalkLimit[client] = 0.0;
 #if !defined NOG
 	DHook_HookClient(client);
 #endif
@@ -1925,6 +1927,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				Call_Finish(action);
 			}
 		}
+		
 	}
 	
 	//support in_use
@@ -2131,35 +2134,15 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		holding[client] |= IN_SCORE;
 		
 #if defined ZR
-		if(GetClientTeam(client) == 2)
+		if(dieingstate[client] == 0)
 		{
-			if(dieingstate[client] == 0)
+			if(WaitingInQueue[client])
 			{
-				if(WaitingInQueue[client])
-				{
-					Queue_Menu(client);
-				}
-				else
-				{
-					Store_Menu(client);
-				}
-			}
-		}
-		else
-		{
-			
-			if(LastStoreMenu[client] || AnyMenuOpen[client])
-			{
-				HideMenuInstantly(client);
-				//show a blank page to instantly hide it
-				CancelClientMenu(client);
-				ClientCommand(client, "slot10");
-				ResetStoreMenuLogic(client);
+				Queue_Menu(client);
 			}
 			else
 			{
-				c_WeaponUseAbilitiesHud[client][0] = 0;
-				Items_EncyclopediaMenu(client);
+				Store_Menu(client);
 			}
 		}
 #endif
@@ -2590,7 +2573,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 //	PrintToChatAll("entity: %i| Clkassname %s",entity, classname);
 	if (entity > 0 && entity <= MAXENTITIES && IsValidEntity(entity))
 	{
-		h_TransmitHookType[entity] = 0;
+	//	h_TransmitHookType[entity] = 0;
 		f_TimeTillMeleeAttackShould[entity] = 0.0;
 		StatusEffectReset(entity, true);
 		f_InBattleDelay[entity] = 0.0;
@@ -2637,7 +2620,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		Building_Mounted[entity] = -1;
 		EntitySpawnToDefaultSiccerino(entity);
 		b_NpcIsTeamkiller[entity] = false;
-		IberiaEntityCreated(entity);
+		AlminaEntityCreated(entity);
 		f_HealDelayParticle[entity] = 0.0;
 		f_DelayAttackspeedPreivous[entity] = 1.0;
 		f_DelayAttackspeedPanicAttack[entity] = -1.0;
@@ -2701,6 +2684,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		EntityFuncAttack2[entity] = INVALID_FUNCTION;
 		EntityFuncAttack3[entity] = INVALID_FUNCTION;
 		EntityFuncReload4[entity] = INVALID_FUNCTION;
+		EntityFuncOnKill[entity] = INVALID_FUNCTION;
 		EntityFuncAttackInstant[entity] = INVALID_FUNCTION;
 		b_Is_Player_Projectile_Through_Npc[entity] = false;
 		b_IgnorePlayerCollisionNPC[entity] = false;
@@ -2736,7 +2720,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		b_IsAFlameThrower[entity] = false;
 		b_HasBombImplanted[entity] = false;
 		i_RaidGrantExtra[entity] = 0;
-		i_IsABuilding[entity] = false;
+		
 		i_NervousImpairmentArrowAmount[entity] = 0;
 		i_VoidArrowAmount[entity] = 0;
 		i_ChaosArrowAmount[entity] = 0;
@@ -2781,6 +2765,13 @@ public void OnEntityCreated(int entity, const char[] classname)
 		else if(!StrContains(classname, "entity_medigun_shield"))
 		{
 			SDKHook(entity, SDKHook_SpawnPost, Delete_instantly_Shield);
+		}
+		else if(!StrContains(classname, "tf_ragdoll"))
+		{
+			if(RemoveRagdollDo)
+				RemoveEntity(entity);
+
+			RemoveRagdollDo = false;
 		}
 		else if(!StrContains(classname, "tf_objective_resource"))
 		{
@@ -2991,6 +2982,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 			SDKHook(entity, SDKHook_SpawnPost, Set_Projectile_Collision);
 			Hook_DHook_UpdateTransmitState(entity);
 			b_IsAProjectile[entity] = true;
+			func_WandOnTouch[entity] = INVALID_FUNCTION;
 			
 		}
 #endif
@@ -3030,6 +3022,15 @@ public void OnEntityCreated(int entity, const char[] classname)
 			OnManglerCreated(entity);
 		}
 #endif
+		else if(!StrContains(classname, "obj_dispenser") || 
+		!StrContains(classname, "obj_sentrygun") || 
+		!StrContains(classname, "obj_teleporter"))
+		{
+			//base tf2 buildings arent really supported for now
+			b_ThisEntityIgnored[entity] = true;
+			b_ThisEntityIgnored_NoTeam[entity] = true;
+			npc.bCantCollidieAlly = true;
+		}
 		else if(!StrContains(classname, "obj_") && !StrEqual(classname, "obj_vehicle"))
 		{
 			b_BuildingHasDied[entity] = false;
@@ -3279,10 +3280,10 @@ void CheckIfAloneOnServer(bool CountOnly = false)
 	for(int client=1; client<=MaxClients; client++)
 	{
 #if defined ZR 
-		if(IsClientInGame(client) && GetClientTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] != TEUTON_WAITING)
+		if(IsClientInGame(client) && GetTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] != TEUTON_WAITING)
 #endif
 #if defined RPG 
-		if(IsClientInGame(client) && GetClientTeam(client)==2 && !IsFakeClient(client))
+		if(IsClientInGame(client) && GetTeam(client)==2 && !IsFakeClient(client))
 #endif
 		{
 			if(!b_AntiLateSpawn_Allow[client])
@@ -3324,7 +3325,7 @@ void CheckIfAloneOnServer(bool CountOnly = false)
 	}
 	for(int client=1; client<=MaxClients; client++)
 	{
-		if(IsClientInGame(client) && GetClientTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] == TEUTON_NONE)
+		if(IsClientInGame(client) && GetTeam(client)==2 && !IsFakeClient(client) && TeutonType[client] == TEUTON_NONE)
 		{
 			//update clients
 			Store_ApplyAttribs(client);
@@ -3834,7 +3835,9 @@ void ReviveClientFromOrToEntity(int target, int client, int extralogic = 0, int 
 		SetEntityFlags(target, GetEntityFlags(target)|FL_DUCKING);
 		CClotBody npc = view_as<CClotBody>(target);
 		npc.m_bThisEntityIgnored = false;
-		TeleportEntity(target, pos, ang, NULL_VECTOR);
+		
+		Player_Teleport_Safe(target,pos, true, true);
+		TeleportEntity(target, NULL_VECTOR, ang, NULL_VECTOR);
 		SetEntityCollisionGroup(target, 5);
 
 		if(WasClientReviving)
@@ -4011,7 +4014,7 @@ public void ArrowTouchNonCombatEntity(int entity, int other)
 }
 
 
-void PlayerHasInteract(int client, char[] Buffer, int Buffersize)
+stock void PlayerHasInteract(int client, char[] Buffer, int Buffersize)
 {
 	if(zr_interactforcereload.BoolValue) //Cvar is on
 	{
@@ -4043,6 +4046,9 @@ void PlayerHasInteract(int client, char[] Buffer, int Buffersize)
 int CalcMaxPlayers()
 {
 	int playercount = CvarMaxPlayerAlive.IntValue;
+	if(playercount == -1)
+		return -1;
+		
 	if(playercount < 1)
 		playercount = MAXPLAYERS - 1;
 	/*
@@ -4088,7 +4094,7 @@ void TakeDamage_DisableMVM()
 
 
 
-void EntityClearPanicButton()
+stock void EntityClearPanicButton()
 {
 	switch(CurrentEdictStrikes)
 	{

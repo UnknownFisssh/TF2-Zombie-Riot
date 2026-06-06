@@ -38,7 +38,7 @@ void FinalHunter_Setup()
 	strcopy(data.Icon, sizeof(data.Icon), "sniper_headshot");
 	data.IconCustom = true;
 	data.Flags = 0;
-	data.Category = Type_BlueParadox;
+	data.Category = Type_Raid;
 	data.Func = ClotSummon;
 	NPCId = NPC_Add(data);
 }
@@ -178,13 +178,14 @@ static void ClotThink(int iNPC)
 
 			float pos[3];
 			GetEntPropVector(npc.index, Prop_Send, "m_vecOrigin", pos);
-			SeaFounder_SpawnNethersea(pos);
-			npc.m_iBleedType = BLEEDTYPE_SEABORN;
+			SeaFounder_SpawnAbyss(pos);
+			npc.m_iBleedType = BLEEDTYPE_DWELLER;
 
 			RaidBossActive = EntIndexToEntRef(npc.index);
 			RaidModeTime = GetGameTime() + 9000.0;
 			RaidModeScaling = 0.0;
 			RaidAllowsBuildings = true;
+			RaidAllowLastman = true;
 			Waves_Progress();
 
 			CPrintToChatAll("{darkred}Wildingen Hitman{default}: {black}It's inside me");
@@ -288,6 +289,7 @@ static void ClotThink(int iNPC)
 						RaidModeTime = GetGameTime() + 9000.0;
 						RaidModeScaling = 0.0;
 						RaidAllowsBuildings = true;
+						RaidAllowLastman = true;
 
 						EmitSoundToAll("mvm/mvm_warning.wav");
 						fl_Extra_Speed[npc.index] = 1.5;
@@ -318,7 +320,7 @@ static void ClotThink(int iNPC)
 							if(ShouldNpcDealBonusDamage(target))
 								damage *= 50.0;
 							
-							if(NpcStats_IberiaIsEnemyMarked(target))
+							if(NpcStats_AlminaIsEnemyMarked(target))
 								damage *= 100.0;
 
 							npc.PlayMeleeHitSound();

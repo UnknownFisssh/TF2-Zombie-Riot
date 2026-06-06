@@ -67,7 +67,7 @@ public void AgentSmith_OnMapStart_NPC()
 	strcopy(data.Icon, sizeof(data.Icon), "matrix_agent_smith");
 	data.IconCustom = true;
 	data.Flags = MVM_CLASS_FLAG_MINIBOSS|MVM_CLASS_FLAG_ALWAYSCRIT;
-	data.Category = Type_Matrix;
+	data.Category = Type_Raid;
 	data.Func = ClotSummon;
 	data.Precache = ClotPrecache;
 	smith_id = NPC_Add(data);
@@ -602,7 +602,7 @@ static void RaidSmith_SelfDefense(AgentSmith npc, float gameTime, int target, fl
 				float damage = 50.0;
 				damage *= RaidModeScaling;
 
-				FireBullet(npc.index, npc.m_iWearable1, vecMe, vecDir, damage, 9000.0, DMG_BULLET, "dxhr_sniper_rail_blue");
+				FireBullet(npc.index, npc.m_iWearable3, vecMe, vecDir, damage, 9000.0, DMG_BULLET, "dxhr_sniper_rail_blue");
 				
 				npc.PlayRangedSound();
 			}
@@ -1056,6 +1056,7 @@ static void PrepareSmith_Raid(AgentSmith npc)
 	RaidModeTime = GetGameTime(npc.index) + 225.0;
 	RaidBossActive = EntIndexToEntRef(npc.index);
 	RaidAllowsBuildings = false;
+	RaidAllowLastman = true;
 
 	MusicEnum music;
 	strcopy(music.Path, sizeof(music.Path), "#zombiesurvival/matrix/neodammerung.mp3");

@@ -68,7 +68,8 @@ void DHook_Setup()
 	{
 		SetFailState("Failed to load gamedata (zombie_riot).");
 	} 
-		
+	//some attribs donjt get fully reset for melee range due to swords...
+	DHook_CreateDetour(gamedata, "CTFWeaponBaseMelee::DoSwingTraceInternal", DHook_DoSwingTracePre, _);
 	//so it doesnt remove charge effects
 	DHook_CreateDetour(gamedata, "CTFPlayer::GetChargeEffectBeingProvided", DHook_GetChargeEffectBeingProvidedPre, DHook_GetChargeEffectBeingProvidedPost);
 	//correct cosmetics (most of the time)
@@ -823,6 +824,16 @@ public MRESReturn DHook_RocketExplodePre(int entity, DHookParam params)
 	GrenadePos[2] += 5.0;
 	TE_Particle("ExplosionCore_MidAir", GrenadePos, NULL_VECTOR, NULL_VECTOR, 
 	_, _, _, _, _, _, _, _, _, _, 0.0);
+	//reuse for kaboom
+	Function func = func_WandOnTouch[entity];
+	if(func && func != INVALID_FUNCTION)
+	{
+		Call_StartFunction(null, func);
+		Call_PushCell(entity);
+		Call_Finish();
+		//todo: convert all on death and on take damage to this.
+	}
+	func_WandOnTouch[entity] = INVALID_FUNCTION;
 	RemoveEntity(entity);
 	return MRES_Supercede;
 }
@@ -1533,7 +1544,12 @@ public MRESReturn DHook_ForceRespawn(int client)
 		i_AmountDowned[client] = 0;
 	f_TimeAfterSpawn[client] = GetGameTime() + 1.0;
 
-	if(Construction_Mode() || BetWar_Mode() || Dungeon_Mode())
+	if(Dungeon_Mode())
+	{
+		CreateTimer(0.1, Dhook_TeleportToCenter, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+		return MRES_Ignored;
+	}
+	if(Construction_Mode() || BetWar_Mode())
 		return MRES_Ignored;
 #endif
 	
@@ -1720,7 +1736,7 @@ public MRESReturn OnHealingBoltImpactTeamPlayer(int healingBolt, Handle hParams)
 		SetGlobalTransTarget(owner);
 		
 		ApplyStatusEffect(owner, owner, 	"Healing Resolve", 5.0);
-		ApplyStatusEffect(owner, target, 	"Healing Resolve", 15.0);
+		ApplyStatusEffect(owner, target, 	"Healing Resolve", 5.0);
 	}
 	else
 	{
@@ -1731,7 +1747,7 @@ public MRESReturn OnHealingBoltImpactTeamPlayer(int healingBolt, Handle hParams)
 		SetGlobalTransTarget(owner);
 			
 		ApplyStatusEffect(owner, owner, 	"Healing Resolve", 5.0);
-		ApplyStatusEffect(owner, target, 	"Healing Resolve", 15.0);
+		ApplyStatusEffect(owner, target, 	"Healing Resolve", 5.0);
 	}
 
 	
@@ -2118,10 +2134,15 @@ stock bool ShieldDeleteProjectileCheck(int owner, int enemy)
 void Update_TransmitState(int entity)
 {
 	SetEntProp(entity, Prop_Data, "m_nTransmitStateOwnedCounter", 0);
+	NpcDrawWorldLogic(entity);
+	SetEntProp(entity, Prop_Data, "m_nTransmitStateOwnedCounter", 1);
+	/*
+	SetEntProp(entity, Prop_Data, "m_nTransmitStateOwnedCounter", 0);
 	Hook_DHook_UpdateTransmitStateInternal(entity);
 	RequestFrames(RevertTransmitDo,1, EntIndexToEntRef(entity), true);
+	*/
 }
-
+/*
 void RevertTransmitDo(int ref)
 {
 	int entity = EntRefToEntIndex(ref);
@@ -2130,6 +2151,7 @@ void RevertTransmitDo(int ref)
 		return;
 	}
 	SetEntProp(entity, Prop_Data, "m_nTransmitStateOwnedCounter", 1);
+	
 	if(h_TransmitHookType[entity] != 0)
 	{
 		if(!DHookRemoveHookID(h_TransmitHookType[entity]))
@@ -2138,14 +2160,18 @@ void RevertTransmitDo(int ref)
 		}
 	}
 	h_TransmitHookType[entity] = 0;
+	
 }
+*/
 
 void Hook_DHook_UpdateTransmitState(int entity)
 {
 	Update_TransmitState(entity);
 }
+/*
 void Hook_DHook_UpdateTransmitStateInternal(int entity)
 {
+	SetEdictFlags(entity, SetEntityTransmitState(entity, FL_EDICT_PVSCHECK));
 	if(h_TransmitHookType[entity] != 0)
 	{
 		if(!DHookRemoveHookID(h_TransmitHookType[entity]))
@@ -2155,6 +2181,7 @@ void Hook_DHook_UpdateTransmitStateInternal(int entity)
 	}
 	h_TransmitHookType[entity] = g_DhookUpdateTransmitState.HookEntity(Hook_Pre, entity, DHook_UpdateTransmitState);
 }
+*/
 
 public MRESReturn DHook_UpdateTransmitState(int entity, DHookReturn returnHook) //BLOCK!!
 {
@@ -2325,4 +2352,11 @@ void V_swap(int &x, int &y)
 	int temp = x;
 	x = y;
 	y = temp;
+}
+
+//cancel melee, we have our own.
+public MRESReturn DHook_DoSwingTracePre(int entity, DHookReturn returnHook, DHookParam param)
+{
+    returnHook.Value = false;
+    return MRES_Supercede;
 }
