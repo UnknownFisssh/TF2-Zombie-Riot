@@ -881,6 +881,13 @@ void ZR_MapStart()
 	{
 		IsNonZRMap = true;
 	}
+	
+	// Consider VSH maps as ZR maps
+	if(StrContains(mapname, "vsh_zr_") == 0)
+		IsNonZRMap = false;
+	if(StrContains(mapname, "vsh_") == 0)
+		IsNonZRMap = false;
+
 	MusicString1.Clear();
 	MusicString2.Clear();
 	MusicSetup1.Clear();
@@ -1467,8 +1474,8 @@ public Action Command_Flop(int client, int args)
 {
 	if(client && IsEntityAlive(client))
 	{
-		FreezeNpcInTime(client, 1.5, true);
-		ApplyStatusEffect(client, client, "Ragdolled", 1.5);	
+		FreezeNpcInTime(client, 1.0, true);
+		ApplyStatusEffect(client, client, "Ragdolled", 2.0);	
 	}
 	return Plugin_Handled;
 }
