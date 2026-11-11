@@ -65,7 +65,11 @@ void Flagellant_Enable(int client, int weapon)
 			MeleeLevel[client] = RoundFloat(Attributes_Get(weapon, 868, 0.0));
 			PrecacheSharedDarkestMusic();
 			delete EffectTimer[client];
-			EffectTimer[client] = CreateTimer(0.5, Flagellant_EffectTimer, client, TIMER_REPEAT);
+			
+			DataPack pack;
+			EffectTimer[client] = CreateDataTimer(0.5, Flagellant_EffectTimer, pack, TIMER_REPEAT);
+			pack.WriteCell(client); // has to be client index and not userid
+			pack.WriteCell(EntIndexToEntRef(weapon));
 		}
 		case WEAPON_FLAGELLANT_HEAL:
 		{
@@ -140,57 +144,57 @@ void Flagellant_MiniBossChance(int &chance)
 	*/
 }
 
-public Action Flagellant_EffectTimer(Handle timer, int client)
+public Action Flagellant_EffectTimer(Handle timer, DataPack pack)
 {
-	if(IsClientInGame(client))
+	pack.Reset();
+	int client = pack.ReadCell();
+	int weapon = EntRefToEntIndex(pack.ReadCell());
+	
+	if(IsClientInGame(client) && IsValidEntity(weapon))
 	{
-		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-		if(weapon != -1 && IsPlayerAlive(client))
+		switch(i_CustomWeaponEquipLogic[weapon])
 		{
-			switch(i_CustomWeaponEquipLogic[weapon])
+			case WEAPON_FLAGELLANT_MELEE, WEAPON_FLAGELLANT_HEAL, WEAPON_FLAGELLANT_DAMAGE:
 			{
-				case WEAPON_FLAGELLANT_MELEE, WEAPON_FLAGELLANT_HEAL, WEAPON_FLAGELLANT_DAMAGE:
+				if(ParticleRef[client] == -1)
 				{
-					if(ParticleRef[client] == -1)
-					{
-						float pos[3]; GetClientAbsOrigin(client, pos);
-						pos[2] += 1.0;
+					float pos[3]; GetClientAbsOrigin(client, pos);
+					pos[2] += 1.0;
 
-						int entity = ParticleEffectAt(pos, "utaunt_hands_floor2_green", -1.0);
-						if(entity > MaxClients)
-						{
-							SetParent(client, entity);
-							ParticleRef[client] = EntIndexToEntRef(entity);
-						}
+					int entity = ParticleEffectAt(pos, "utaunt_hands_floor2_green", -1.0);
+					if(entity > MaxClients)
+					{
+						SetParent(client, entity);
+						ParticleRef[client] = EntIndexToEntRef(entity);
 					}
-				//	ApplyRapidSuturing(client);
-					ApplyStatusEffect(client, client, "Thick Blood", 0.6);
-					
-					if(LastMann)
-					{
-						float maxhealth = 1.0;
-						float health = float(GetEntProp(client, Prop_Data, "m_iHealth"));
-						maxhealth = float(ReturnEntityMaxHealth(client));
+				}
+			//	ApplyRapidSuturing(client);
+				ApplyStatusEffect(client, client, "Thick Blood", 0.6);
+				
+				if(LastMann)
+				{
+					float maxhealth = 1.0;
+					float health = float(GetEntProp(client, Prop_Data, "m_iHealth"));
+					maxhealth = float(ReturnEntityMaxHealth(client));
 
-						if(health >= maxhealth * 0.2)
+					if(health >= maxhealth * 0.2)
+					{
+						ApplyStatusEffect(client, client, "Infinite Will", 3.0);
+						ApplyStatusEffect(client, client, "Flagellants Punishment", 10.0);
+					}
+					else
+					{
+						for(int LoopClient = 1; LoopClient <= MaxClients; LoopClient++)
 						{
-							ApplyStatusEffect(client, client, "Infinite Will", 3.0);
-							ApplyStatusEffect(client, client, "Flagellants Punishment", 10.0);
-						}
-						else
-						{
-							for(int LoopClient = 1; LoopClient <= MaxClients; LoopClient++)
+							if(IsClientInGame(LoopClient) && IsPlayerAlive(LoopClient))
 							{
-								if(IsClientInGame(LoopClient) && IsPlayerAlive(LoopClient))
-								{
-									ApplyStatusEffect(LoopClient, LoopClient, "Death is comming.", 1.0);
-								}
+								ApplyStatusEffect(LoopClient, LoopClient, "Death is comming.", 1.0);
 							}
 						}
 					}
-					
-					return Plugin_Continue;
 				}
+				
+				return Plugin_Continue;
 			}
 		}
 		
@@ -312,7 +316,7 @@ public Action Flagellant_DamagerTimer(Handle timer, DataPack pack)
 				b_LagCompNPC_OnlyAllies = false;
 				StartLagCompensation_Base_Boss(client);
 				int target = GetClientPointVisiblePlayersNPCs(client, 800.0, pos, true);
-				FinishLagCompensation_Base_boss();
+				FinishLagCompensation_Base_boss(.client = client);
 
 				bool validEnemy;
 
@@ -480,7 +484,7 @@ public void Weapon_FlagellantHealing_M1(int client, int weapon, bool crit, int s
 	}
 	else if(!b_NpcHasDied[target])
 	{
-		if(GetTeam(target) == 2 && !b_NpcIsInvulnerable[target] && !Citizen_ThatIsDowned(target))
+		if(GetTeam(target) == GetTeam(client) && !b_NpcIsInvulnerable[target] && !Citizen_ThatIsDowned(target))
 		{
 			validAlly = true;
 		}
@@ -590,7 +594,7 @@ public void Weapon_FlagellantDamage_M1(int client, int weapon, bool crit, int sl
 	StartLagCompensation_Base_Boss(client);
 	float pos[3];
 	int target = GetClientPointVisiblePlayersNPCs(client, 800.0, pos, true);
-	FinishLagCompensation_Base_boss();
+	FinishLagCompensation_Base_boss(.client = client);
 
 	bool validEnemy;
 
@@ -598,13 +602,9 @@ public void Weapon_FlagellantDamage_M1(int client, int weapon, bool crit, int sl
 	{
 
 	}
-	else if(!b_NpcHasDied[target])
+	else if(IsValidEnemy(client, target, true))
 	{
-		if(GetTeam(target) != 2)
-		{
-			if(!b_NpcIsInvulnerable[target])
-				validEnemy = true;
-		}
+		validEnemy = true;
 	}
 
 	if(validEnemy)
@@ -684,12 +684,12 @@ public void Weapon_FlagellantHealing_M2(int client, int weapon, bool crit, int s
 	}
 	else if(target <= MaxClients)
 	{
-		if(TeutonType[target] == TEUTON_NONE)
+		if(dieingstate[target] < 1 && TeutonType[target] == TEUTON_NONE)
 			validAlly = true;
 	}
 	else if(!b_NpcHasDied[target])
 	{
-		if(GetTeam(target) == 2 && !b_NpcIsInvulnerable[target])
+		if(GetTeam(target) == GetTeam(client) && !b_NpcIsInvulnerable[target] && !Citizen_ThatIsDowned(target))
 		{
 			validAlly = true;
 		}
@@ -803,7 +803,7 @@ public void Weapon_FlagellantDamage_M2(int client, int weapon, bool crit, int sl
 	StartLagCompensation_Base_Boss(client);
 	float pos[3];
 	int target = GetClientPointVisiblePlayersNPCs(client, 800.0, pos, true);
-	FinishLagCompensation_Base_boss();
+	FinishLagCompensation_Base_boss(.client = client);
 
 	bool validEnemy;
 
@@ -811,13 +811,9 @@ public void Weapon_FlagellantDamage_M2(int client, int weapon, bool crit, int sl
 	{
 
 	}
-	else if(!b_NpcHasDied[target])
+	else if(IsValidEnemy(client, target, true))
 	{
-		if(GetTeam(target) != 2)
-		{
-			if(!b_NpcIsInvulnerable[target])
-				validEnemy = true;
-		}
+		validEnemy = true;
 	}
 
 	if(validEnemy)

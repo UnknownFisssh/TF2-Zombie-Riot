@@ -14,10 +14,8 @@
 #if !defined RTS
 #include <tf2attributes>
 #endif
-//#include <lambda>
 #include <morecolors>
 #include <cbasenpc>
-#include <tf2utils>
 #include <profiler>
 #include <collisionhook>
 #include <sourcescramble>
@@ -61,8 +59,8 @@
 
 #endif
 
-#define ZR_MAX_GIBCOUNT		12 //Anymore then this, and it will only summon 1 gib per zombie instead.
-#define ZR_MAX_GIBCOUNT_ABSOLUTE 35 //Anymore then this, and the duration is halved for gibs staying.
+#define ZR_MAX_GIBCOUNT		56 //Anymore then this, and it will only summon 1 gib per zombie instead.
+#define ZR_MAX_GIBCOUNT_ABSOLUTE 20 //Anymore then this, and the duration is halved for gibs staying.
 #define RAIDBOSS_GLOBAL_ATTACKLIMIT 16
 
 //#pragma dynamic	131072
@@ -85,6 +83,12 @@ enum
 	EDICT_RAID,
 	EDICT_EFFECT
 }
+#define FFADE_IN            0x0001        // Just here so we don't pass 0 into the function
+#define FFADE_OUT           0x0002        // Fade out (not in)
+#define FFADE_MODULATE      0x0004        // Modulate (don't blend)
+#define FFADE_STAYOUT       0x0008        // ignores the duration, stays faded out until new ScreenFade message received
+#define FFADE_PURGE         0x0010        // Purges all other fades, replacing them with this one´
+
 //maybe doing this will help lag, as there are no aim layers in zombies, they always look forwards no matter what.
 
 //edit: No, makes you miss more often.
@@ -101,6 +105,7 @@ ConVar zr_downloadconfig;
 ConVar CvarSkillPoints;
 ConVar CvarRogueSpecialLogic;
 ConVar CvarLeveling;
+ConVar CvarDisableAutoLoadouts;
 ConVar CvarAutoSelectWave;
 ConVar CvarAutoSelectDiff;
 ConVar CvarVoteLimit;
@@ -294,7 +299,7 @@ enum
 	#define DEFAULT_UPDATE_DELAY_FLOAT 0.0151 //rpg needs a bigger delay.
 #endif
 
-#define DEFAULT_HURTDELAY 0.35 //Make it 0 for now
+#define DEFAULT_HURTDELAY 0.3 //Make it 0 for now
 
 
 
@@ -322,8 +327,8 @@ enum
 
 //I put these here so we can change them on fly if we need to, cus zombies can be really loud, or quiet.
 
-#define NORMAL_ZOMBIE_SOUNDLEVEL	 80
-#define NORMAL_ZOMBIE_VOLUME	 0.8
+#define NORMAL_ZOMBIE_SOUNDLEVEL	 85
+#define NORMAL_ZOMBIE_VOLUME	 0.95
 
 #define BOSS_ZOMBIE_SOUNDLEVEL	 90
 #define BOSS_ZOMBIE_VOLUME	 1.0
@@ -348,7 +353,6 @@ char g_ArrowHitSoundMiss[][] = {
 };
 
 char g_GibSound[][] = {
-	"physics/flesh/flesh_squishy_impact_hard1.wav",
 	"physics/flesh/flesh_squishy_impact_hard2.wav",
 	"physics/flesh/flesh_squishy_impact_hard3.wav",
 	"physics/flesh/flesh_squishy_impact_hard4.wav",
@@ -623,6 +627,7 @@ bool b_DisableSetupMusic[MAXENTITIES];
 bool b_DisableStatusEffectHints[MAXENTITIES];
 bool b_LastManDisable[MAXENTITIES];
 float f_HeadshotDamageMultiNpc[MAXENTITIES];
+int i_TraceToInstead[MAXENTITIES];
 
 int b_OnDeathExtraLogicNpc[MAXENTITIES];
 #define	ZRNPC_DEATH_NOHEALTH		( 1<<0 )	// Do not give health on kill!
@@ -708,6 +713,7 @@ int OriginalWeapon_AmmoType[MAXENTITIES];
 #include "master_takedamage.sp"
 #include "npc_default_sounds.sp"	// NPC Stats is required here due to important methodmap
 #include "npc_stats.sp"	// NPC Stats is required here due to important methodmap
+#include "npc_gibs.sp"	// NPC Stats is required here due to important methodmap
 #include "npc_collision_logic.sp"	// NPC collisions are sepearted for ease
 #include "npc_trace_filters.sp"	// NPC trace filters are sepearted for ease
 
@@ -731,6 +737,7 @@ int OriginalWeapon_AmmoType[MAXENTITIES];
 #include "../standalone/nog_core.sp"
 #endif
 
+#include "vscript.sp"
 /*
 	Below Are Non-Shared Variables/Defines
 */
@@ -823,6 +830,7 @@ public void OnPluginStart()
 #endif
 	checkOS();
 	FileNetwork_PluginStart();
+	VScript_PluginStart();
 
 	RegServerCmd("zr_update_blocked_nav", OnReloadBlockNav, "Reload Nav Blocks");
 	RegAdminCmd("sm_play_viewmodel_anim", Command_PlayViewmodelAnim, ADMFLAG_ROOT, "Testing viewmodel animation manually");
@@ -923,8 +931,8 @@ public void OnLibraryAdded(const char[] name)
 #if defined ZR
 	FileNetwork_LibraryAdded(name);
 	SteamWorks_LibraryAdded(name);
-	VScript_LibraryAdded(name);
 #endif
+	VScript_LibraryAdded(name);
 }
 
 public void OnLibraryRemoved(const char[] name)
@@ -932,8 +940,8 @@ public void OnLibraryRemoved(const char[] name)
 #if defined ZR
 	FileNetwork_LibraryRemoved(name);
 	SteamWorks_LibraryRemoved(name);
-	VScript_LibraryRemoved(name);
 #endif
+	VScript_LibraryRemoved(name);
 }
 
 /*
@@ -954,7 +962,8 @@ public Action Timer_Temp(Handle timer)
 	}
 	
 #if defined ZR
-	if(RaidbossIgnoreBuildingsLogic())
+	bool raid = RaidbossIgnoreBuildingsLogic();
+	if(raid)
 	{
 		if(i_npcspawnprotection[EntRefToEntIndex(RaidBossActive)] > NPC_SPAWNPROT_INIT)
 		{
@@ -973,6 +982,25 @@ public Action Timer_Temp(Handle timer)
 			}
 		}
 	}
+	
+	for(int client=1; client<=MaxClients; client++)
+	{
+		if (!IsClientInGame(client) || IsFakeClient(client))
+			continue;
+		
+		// Always show the raid boss to everyone on the HUD
+		if (raid)
+			Calculate_And_Display_hp(client, EntRefToEntIndex(RaidBossActive), 0.0, true, .RaidHudForce = true);
+		
+		// Show the NPC a player is spectating on the HUD
+		if (IsClientObserver(client) && GetEntProp(client, Prop_Send, "m_iObserverMode") == OBS_MODE_CHASE)
+		{
+			int target = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
+			if (target > MaxClients && b_ThisWasAnNpc[target] && !b_NpcHasDied[target])
+				Calculate_And_Display_hp(client, target, 0.0, true);
+		}
+	}
+	
 	if (GetWaveSetupCooldown() > GetGameTime() && GetWaveSetupCooldown() < GetGameTime() + 10.0)
 	{
 		PlayTickSound(false, true);
@@ -1013,6 +1041,8 @@ public void OnPluginEnd()
 //	Waves_MapEnd(); DO NOT CALL THIS ON PLUGIN END, plugin ends anways, why change anything???
 	RemoveMVMLogicSafety();
 	Vehicle_PluginEnd();
+	RandomPickup_Clear();
+	NPCStats_ClearPaintedWearables();
 #endif
 	float WaitingForPlayersTime = FindConVar("mp_waitingforplayers_time").FloatValue;
 	if(WaitingForPlayersTime <= 0.0)
@@ -1172,6 +1202,7 @@ public void OnMapStart()
 	Zero(f_StunExtraGametimeDuration);
 	CurrentGibCount = 0;
 	Zero(b_NetworkedCrouch);
+	Zero(f_AniSoundSpam);
 	
 #if defined VIEW_CHANGES
 	ViewChange_MapStart();
@@ -1211,6 +1242,7 @@ public void OnMapStart()
 	g_iLaserMaterial_Trace = PrecacheModel("materials/sprites/laserbeam.vmt");
 	CreateTimer(0.2, Timer_Temp, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	PrecacheSound("mvm/mvm_tank_horn.wav");
+	PrecacheSound("physics/glass/glass_sheet_break3.wav");
 	DeleteShadowsOffZombieRiot();
 
 	if(LibraryExists("LoadSoundscript"))
@@ -1291,6 +1323,7 @@ public void OnMapEnd()
 #if defined ZR
 	RemoveMVMLogicSafety();
 #endif
+	VScript_MapEnd();
 }
 
 public void OnConfigsExecuted()
@@ -1530,6 +1563,13 @@ public void ConVarCallback_r_teeth(QueryCookie cookie, int client, ConVarQueryRe
 	}
 }
 
+public void OnClientConnected(int client)
+{
+#if defined ZR
+	Store_ResetClient(client);
+#endif
+}
+
 public void OnClientPostAdminCheck(int client)
 {
 #if defined ZR
@@ -1678,7 +1718,7 @@ public void OnClientDisconnect(int client)
 	RTSCamera_ClientDisconnect(client);
 #endif
 
-	i_ClientHasCustomGearEquipped[client] = 0;
+	i_ClientHasCustomGearEquipped[client] = CUSTOMGEAR_NONE;
 	i_EntityToAlwaysMeleeHit[client] = 0;
 	ReplicateClient_Svairaccelerate[client] = -1.0;
 	ReplicateClient_BackwardsWalk[client] = -1.0;
@@ -1763,11 +1803,22 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 		buttons = 0;
 		return Plugin_Changed;
 	}
+
+
+#if defined ZR
+	if(Arena_Mode() && dieingstate[client] != 0)
+	{
+		//not being able to use any abilities or attack in arena mode as its quite unfair
+		buttons &= ~IN_ATTACK;
+		buttons &= ~IN_ATTACK2;
+		buttons &= ~IN_ATTACK3;
+		buttons &= ~IN_RELOAD;
+		return Plugin_Changed;
+	}
 	/*
 	Instant community feedback that T is very bad.
 	using idk what other button to use.
 	*/
-#if defined ZR
 	if(impulse == 201)
 	{
 		bool BlockImpulse = false;
@@ -1927,7 +1978,6 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 				Call_Finish(action);
 			}
 		}
-		
 	}
 	
 	//support in_use
@@ -2573,6 +2623,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 //	PrintToChatAll("entity: %i| Clkassname %s",entity, classname);
 	if (entity > 0 && entity <= MAXENTITIES && IsValidEntity(entity))
 	{
+		b_Do_Not_Compensate[entity] = true;
 	//	h_TransmitHookType[entity] = 0;
 		f_TimeTillMeleeAttackShould[entity] = 0.0;
 		StatusEffectReset(entity, true);
@@ -2702,6 +2753,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 		f_DuelStatus[entity] = 0.0;
 		b_BuildingHasDied[entity] = true;
 		b_is_a_brush[entity] = false;
+		i_TraceToInstead[entity] = -1;
 		i_IsVehicle[entity] = 0;
 		b_IsARespawnroomVisualiser[entity] = false;
 		b_ThisEntityIgnoredEntirelyFromAllCollisions[entity] = false;
@@ -2850,7 +2902,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 			npc.bCantCollidie = true;
 			npc.bCantCollidieAlly = true;
 			SDKHook(entity, SDKHook_SpawnPost, Set_Projectile_Collision);
-			SetTeam(entity, TFTeam_Red);
+		//	SetTeam(entity, TFTeam_Red);
 			b_IsAProjectile[entity] = true;
 		}
 		else if(!StrContains(classname, "tf_projectile_flare"))
@@ -2904,16 +2956,11 @@ public void OnEntityCreated(int entity, const char[] classname)
 			b_IsARespawnroomVisualiser[entity] = true;
 			b_ThisEntityIsAProjectileForUpdateContraints[entity] = true;
 		}
-		else if(!StrContains(classname, "prop_physics_multiplayer"))
+		else if(!StrContains(classname, "prop_soccer_ball") ||
+		!StrContains(classname, "prop_physics_multiplayer")||
+		!StrContains(classname, "prop_physics_override"))
 		{
 			b_ThisEntityIsAProjectileForUpdateContraints[entity] = true;
-			npc.bCantCollidie = true;
-			npc.bCantCollidieAlly = true;
-		}
-		else if(!StrContains(classname, "prop_physics_override"))
-		{
-			b_ThisEntityIsAProjectileForUpdateContraints[entity] = true;
-			
 			npc.bCantCollidie = true;
 			npc.bCantCollidieAlly = true;
 		}
@@ -2980,6 +3027,7 @@ public void OnEntityCreated(int entity, const char[] classname)
 			npc.bCantCollidie = true;
 			npc.bCantCollidieAlly = true;
 			SDKHook(entity, SDKHook_SpawnPost, Set_Projectile_Collision);
+			SDKHook(entity, SDKHook_SpawnPost, Set_Rocket_Team);
 			Hook_DHook_UpdateTransmitState(entity);
 			b_IsAProjectile[entity] = true;
 			func_WandOnTouch[entity] = INVALID_FUNCTION;
@@ -3043,10 +3091,18 @@ public void OnEntityCreated(int entity, const char[] classname)
 			Hook_DHook_UpdateTransmitState(entity);
 			b_ThisEntityIgnored[entity] = true;
 			b_ThisEntityIgnored_NoTeam[entity] = true;
+			SetEntProp(entity, Prop_Data, "m_bForcePurgeFixedupStrings", true);
 		}
 		else if(!StrContains(classname, "info_particle_system"))
 		{
 			Hook_DHook_UpdateTransmitState(entity);
+			b_ThisEntityIgnored[entity] = true;
+			b_ThisEntityIgnored_NoTeam[entity] = true;
+			b_EntityCantBeColoured[entity] = true;
+ 		}
+		else if(!StrContains(classname, "env_spritetrail"))
+		{
+		//	Hook_DHook_UpdateTransmitState(entity);
 			b_ThisEntityIgnored[entity] = true;
 			b_ThisEntityIgnored_NoTeam[entity] = true;
 			b_EntityCantBeColoured[entity] = true;
@@ -3111,6 +3167,28 @@ public Action SDKHook_Regenerate_Touch(int entity, int target)
 	return Plugin_Continue;
 }
 
+void Set_Rocket_Team(int entity)
+{
+	RequestFrame(Set_Rocket_TeamFrame, EntRefToEntIndex(entity));
+}
+
+void Set_Rocket_TeamFrame(int ref)
+{
+	int entity = EntRefToEntIndex(ref);
+	if (!IsValidEntity(entity))
+		return;
+
+	if (GetTeam(entity) != 0)
+		return;
+
+	// Team likely not yet setup, assume it's meant to be the same as the owner
+	int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (owner == -1)
+		return;
+	
+	SetTeam(entity, GetTeam(owner));
+}
+
 void Set_Projectile_Collision(int entity)
 {
 	//needs to be delayed by frame, team setting in tf2 happens after its spawned.
@@ -3123,19 +3201,19 @@ void Set_Projectile_CollisionFrame(int ref)
 	if(!IsValidEntity(entity))
 		return;
 
-	if(GetTeam(entity) != view_as<int>(TFTeam_Blue))
-	{
-		SetEntityCollisionGroup(entity, 27);
-		
-#if defined RPG
-		int attacker = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-		if(RPGCore_PlayerCanPVP(attacker, attacker))
-		{
-			//set team to blue while in pvp, so all interactions work just fine, but only do this while in PVP.
-			SetEntProp(entity, Prop_Data, "m_iTeamNum", TFTeam_Blue);
-		}
-#endif
-	}
+//	if(Arena_Mode() || GetTeam(entity) != view_as<int>(TFTeam_Blue))
+//	{
+//		SetEntityCollisionGroup(entity, 27);
+//		
+//#if defined RPG
+//		int attacker = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+//		if(RPGCore_PlayerCanPVP(attacker, attacker))
+//		{
+//			//set team to blue while in pvp, so all interactions work just fine, but only do this while in PVP.
+//			SetEntProp(entity, Prop_Data, "m_iTeamNum", TFTeam_Blue);
+//		}
+//#endif
+//	}
 }
 public void Delete_instantly(int entity)
 {
@@ -3184,6 +3262,7 @@ public void OnEntityDestroyed(int entity)
 	{
 		EntityKilled_HitDetectionCooldown(entity);
 		WeaponWeaponAdditionOnRemoved(entity);
+		func_WandOnTouch[entity] = INVALID_FUNCTION;
 		CurrentEntities--;
 
 		if(entity > MaxClients)
@@ -3306,7 +3385,7 @@ void CheckIfAloneOnServer(bool CountOnly = false)
 #if defined ZR 
 	if(BetWar_Mode())
 		return;
-	if (players < 4 && players > 0)
+	if (players < 4 && players > 0 && !Arena_Mode())
 	{
 		if (Bob_Exists)
 			return;
@@ -3417,6 +3496,12 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 			case TFCond_Slowed:
 			{
 				SDKCall_SetSpeed(client);
+				Viewchange_UpdateDelay(client);
+			}
+			case TFCond_Dazed:
+			{
+				//a sec is 66, and after 33 it should be done
+				Viewchange_UpdateDelay(client, 25);
 			}
 			case TFCond_Taunting:
 			{
@@ -3449,7 +3534,7 @@ public void TF2_OnConditionRemoved(int client, TFCond condition)
 	}
 }
 
-stock bool InteractKey(int client, int weapon, bool Is_Reload_Button = false)
+stock bool InteractKey(int client, int weapon, bool Is_Reload_Button = false, int& EntityAlly = 0)
 {
 	if(weapon != -1) //Just allow. || GetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack")<GetGameTime())
 	{
@@ -3467,6 +3552,7 @@ stock bool InteractKey(int client, int weapon, bool Is_Reload_Button = false)
 				}
 			}
 #endif
+			EntityAlly = entity;
 
 #if defined ZR
 			if(Vehicle_Interact(client, weapon, entity))
@@ -3475,13 +3561,11 @@ stock bool InteractKey(int client, int weapon, bool Is_Reload_Button = false)
 			static char buffer[64];
 			if(GetEntityClassname(entity, buffer, sizeof(buffer)))
 			{
-				if (GetTeam(entity) != TFTeam_Red)
-				{
-					if(Construction_Material_Interact(client, entity))
-						return false;
-
+				if(Construction_Material_Interact(client, entity))
 					return false;
-				}
+
+				if (GetTeam(entity) != TFTeam_Red && !Arena_Mode())
+					return false;
 				
 				if(Object_Interact(client, weapon, entity))
 					return true;
@@ -3695,6 +3779,15 @@ stock void TF2_SetPlayerClass_ZR(int client, TFClassType classType, bool weapons
 	}
 	
 	TF2_SetPlayerClass(client, classType, weapons, persistent);
+	
+	// This updates the player's hitboxes
+	if(Arena_Mode())
+	{
+		char LastModel[512];
+		GetEntPropString(client, Prop_Send, "m_iszCustomModel", LastModel, sizeof(LastModel));
+		SetVariantString(LastModel);
+		AcceptEntityInput(client, "SetCustomModel");
+	}
 }
 
 #if defined ZR
@@ -3804,92 +3897,125 @@ void ReviveClientFromOrToEntity(int target, int client, int extralogic = 0, int 
 	
 	if(dieingstate[target] <= 0)
 	{
-		if(WasClientReviving)
-		{
-			AddHealthToUbersaw(client, 1, 0.065);
-			HealPointToReinforce(client, 1, 0.065);
-			i_Reviving_This_Client[client] = 0;
-			f_Reviving_This_Client[client] = 0.0;
-			Native_OnRevivingPlayer(client, target);
-		}
-		if(extralogic)
-		{
-			i_AmountDowned[target]--;
-			b_BobsCuringHand_Revived[target] = -9999;
-		}
-		SetEntityMoveType(target, MOVETYPE_WALK);
-		RequestFrame(Movetype_walk, EntRefToEntIndex(target));
-		dieingstate[target] = 0;
-		ClientSaveUber(target);
-		ClientSaveRageMeterStatus(target);
-		
-		SetEntPropEnt(target, Prop_Send, "m_hObserverTarget", client);
-		f_WasRecentlyRevivedViaNonWave[target] = GameTime + 1.0;
-		DHook_RespawnPlayer(target);
-		
-		float pos[3], ang[3];
-		GetEntPropVector(client, Prop_Data, "m_vecAbsOrigin", pos);
-		GetEntPropVector(client, Prop_Data, "m_angRotation", ang);
-		ang[2] = 0.0;
-		SetEntProp(target, Prop_Send, "m_bDucked", true);
-		SetEntityFlags(target, GetEntityFlags(target)|FL_DUCKING);
-		CClotBody npc = view_as<CClotBody>(target);
-		npc.m_bThisEntityIgnored = false;
-		
+		FullyReviveClient(target, client, extralogic);
+	}
+}
+
+void FullyReviveClient(int target, int client, int extralogic = 0, bool teleport = true)
+{
+	if(client <= MaxClients)
+	{
+		AddHealthToUbersaw(client, 1, 0.065);
+		HealPointToReinforce(client, 1, 0.065);
+		i_Reviving_This_Client[client] = 0;
+		f_Reviving_This_Client[client] = 0.0;
+		Native_OnRevivingPlayer(client, target);
+	}
+	if(extralogic)
+	{
+		i_AmountDowned[target]--;
+		b_BobsCuringHand_Revived[target] = -9999;
+	}
+	SetEntityMoveType(target, MOVETYPE_WALK);
+	RequestFrame(Movetype_walk, EntRefToEntIndex(target));
+	dieingstate[target] = 0;
+	ClientSaveUber(target);
+	ClientSaveRageMeterStatus(target);
+	
+	int previousActiveWeaponStoreIndex = Store_GetActiveWeaponStoreIndex(target);
+	int previousLastWeaponStoreIndex = Store_GetLastWeaponStoreIndex(target);
+	
+	SetEntPropEnt(target, Prop_Send, "m_hObserverTarget", client);
+	f_WasRecentlyRevivedViaNonWave[target] = GetGameTime() + 1.0;
+	DHook_RespawnPlayer(target);
+	
+	float pos[3], ang[3];
+	GetEntPropVector(client, Prop_Data, "m_vecAbsOrigin", pos);
+	GetEntPropVector(client, Prop_Data, "m_angRotation", ang);
+	ang[2] = 0.0;
+	SetEntProp(target, Prop_Send, "m_bDucked", true);
+	SetEntityFlags(target, GetEntityFlags(target)|FL_DUCKING);
+	CClotBody npc = view_as<CClotBody>(target);
+	npc.m_bThisEntityIgnored = false;
+	
+	if(teleport)
+	{
 		Player_Teleport_Safe(target,pos, true, true);
 		TeleportEntity(target, NULL_VECTOR, ang, NULL_VECTOR);
-		SetEntityCollisionGroup(target, 5);
+	}
+	SetEntityCollisionGroup(target, 5);
 
-		if(WasClientReviving)
-			PrintCenterText(client, "");
+	if(client <= MaxClients)
+		PrintCenterText(client, "");
 
-		PrintCenterText(target, "");
-		DoOverlay(target, "", 2);
-		SetEntityHealth(target, 50);
-		RequestFrame(SetHealthAfterRevive, EntIndexToEntRef(target));
-		Rogue_TriggerFunction(Artifact::FuncRevive, target);
-		int entity, i;
-		while(TF2U_GetWearable(target, entity, i))
+	PrintCenterText(target, "");
+	DoOverlay(target, "", 2);
+	SetEntityHealth(target, 50);
+	RequestFrame(SetHealthAfterRevive, EntIndexToEntRef(target));
+	Rogue_TriggerFunction(Artifact::FuncRevive, target);
+	Gunsaw_TryBodySteal(target, false, pos, true);
+	int entity, i;
+	while(TF2U_GetWearable(target, entity, i))
+	{
+		if(i_WeaponVMTExtraSetting[entity] != -1)
+			continue;
+
+		SetEntityRenderMode(entity, RENDER_NORMAL);
+		SetEntityRenderColor(entity, 255, 255, 255, 255);
+	}
+	if(client <= MaxClients && (i_CurrentEquippedPerk[client] & PERK_REGENE))
+	{
+		HealEntityGlobal(client, client, float(SDKCall_GetMaxHealth(client)) * 0.2, 1.0, 1.0);
+		HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)) * 0.2, 1.0, 1.0, HEAL_ABSOLUTE);
+	}
+	else
+	{
+		if(client <= MaxClients)
+			HealEntityGlobal(client, client, float(SDKCall_GetMaxHealth(client)) * 0.1, 1.0, 1.0);
+		if(extralogic)
 		{
-			if(i_WeaponVMTExtraSetting[entity] != -1)
-				continue;
-
-			SetEntityRenderMode(entity, RENDER_NORMAL);
-			SetEntityRenderColor(entity, 255, 255, 255, 255);
-		}
-		if(WasClientReviving && (i_CurrentEquippedPerk[client] & PERK_REGENE))
-		{
-			HealEntityGlobal(client, client, float(SDKCall_GetMaxHealth(client)) * 0.2, 1.0, 1.0);
-			HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)) * 0.2, 1.0, 1.0, HEAL_ABSOLUTE);
+			HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)) * 1.0, 1.0, 1.0, HEAL_ABSOLUTE);
 		}
 		else
-		{
-			if(WasClientReviving)
-				HealEntityGlobal(client, client, float(SDKCall_GetMaxHealth(client)) * 0.1, 1.0, 1.0);
-			if(extralogic)
-			{
-				HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)) * 1.0, 1.0, 1.0, HEAL_ABSOLUTE);
-			}
-			else
-			{	
-				HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)), 0.1, 1.0, HEAL_ABSOLUTE);
-			}
+		{	
+			HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)), 0.1, 1.0, HEAL_ABSOLUTE);
 		}
-		
-		SetEntityRenderMode(target, RENDER_NORMAL);
-		SetEntityRenderColor(target, 255, 255, 255, 255);
-		EmitSoundToAll("mvm/mvm_revive.wav", target, SNDCHAN_AUTO, 90, _, 1.0);
-		MakePlayerGiveResponseVoice(target, 3); //Revived response!
-		f_ClientBeingReviveDelay[target] = 0.0;
-	//	if(b_KahmlLastWish[target])
-		{
-			HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)) * 0.1, 0.1, 1.0, HEAL_ABSOLUTE);
-			GiveArmorViaPercentage(target, 0.1, 1.0, false);
-			IncreaseEntityDamageTakenBy(target, 0.85, 5.0);
-		}
-		CreateTimer(0.25, ReviveDisplayMessageDelay, EntIndexToEntRef(target), TIMER_FLAG_NO_MAPCHANGE);
-		CheckLastMannStanding(0);
 	}
+	
+	int weapon = Store_GetClientWeaponEntityFromStoreIndex(target, previousActiveWeaponStoreIndex);
+	if (weapon > MaxClients && GetEntPropEnt(target, Prop_Send, "m_hActiveWeapon") != weapon)
+		SetPlayerActiveWeapon(target, weapon);
+	
+	weapon = Store_GetClientWeaponEntityFromStoreIndex(target, previousLastWeaponStoreIndex);
+	if (weapon > MaxClients)
+		SetEntPropEnt(target, Prop_Send, "m_hLastWeapon", weapon);
+	
+	SetEntityRenderMode(target, RENDER_NORMAL);
+	SetEntityRenderColor(target, 255, 255, 255, 255);
+	EmitSoundToAll("mvm/mvm_revive.wav", target, SNDCHAN_AUTO, 90, _, 1.0);
+	MakePlayerGiveResponseVoice(target, 3); //Revived response!
+	f_ClientBeingReviveDelay[target] = 0.0;
+//	if(b_KahmlLastWish[target])
+	{
+		HealEntityGlobal(client, target, float(SDKCall_GetMaxHealth(target)) * 0.1, 0.1, 1.0, HEAL_ABSOLUTE);
+		GiveArmorViaPercentage(target, 0.1, 1.0, false);
+		IncreaseEntityDamageTakenBy(target, 0.85, 5.0);
+	}
+	CreateTimer(0.25, ReviveDisplayMessageDelay, EntIndexToEntRef(target), TIMER_FLAG_NO_MAPCHANGE);
+	CheckLastMannStanding(0);
+}
+
+int TotalDowns()
+{
+	int downsleft = 2;
+	if(ZR_Get_Modifier() == PREFIX_ONESTAND)
+		downsleft++;
+	
+	if(ZR_Get_Modifier() == OLD_TIMES || ZR_Get_Modifier() == NOSTALGICA || NTReduceDowns())
+		downsleft--;
+	
+	downsleft += Dungeon_DownedBonus();
+	return downsleft;
 }
 
 public Action ReviveDisplayMessageDelay(Handle timer, int ref)
@@ -3897,10 +4023,7 @@ public Action ReviveDisplayMessageDelay(Handle timer, int ref)
 	int target = EntRefToEntIndex(ref);
 	if(IsValidClient(target))
 	{
-		int downsleft;
-		downsleft = 2;
-		if(ZR_Get_Modifier() == PREFIX_ONESTAND)
-			downsleft = 3;
+		int downsleft = TotalDowns();
 
 		downsleft -= i_AmountDowned[target];
 		if(downsleft <= 0)
@@ -3965,6 +4088,8 @@ public void ArrowTouchNonCombatEntity(int entity, int other)
 		return;
 
 	if(!b_ThisWasAnNpc[other])
+		return;
+	if(other <= MaxClients)
 		return;
 
 		

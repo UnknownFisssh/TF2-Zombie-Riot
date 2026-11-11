@@ -44,7 +44,10 @@ public void Weapon_German_M1_AltModule2(int client, int weapon, bool &result, in
 
 static void Weapon_German_M1(int client, int weapon, int maxcharge)
 {
-	int cost = GermanSilence[client] ? 75 : 100;
+	int cost = 100;
+	if(GermanSilence[client] != null)
+		cost = 200;
+
 	cost = RoundToNearest(Attributes_Get(weapon, 733, 1.0) * float(cost));
 
 	if(Current_Mana[client] < cost)
@@ -172,7 +175,7 @@ public Action Weapon_German_Timer(Handle timer, int client)
 				DoSwingTrace_Custom(swingTrace, client, vecSwingForward, 2000.0, false, 45.0, false);
 				int target = TR_GetEntityIndex(swingTrace);	
 				delete swingTrace;
-				FinishLagCompensation_Base_boss();
+				FinishLagCompensation_Base_boss(.client = client);
 
 				if(target == 0)
 					target = -1;
@@ -183,7 +186,7 @@ public Action Weapon_German_Timer(Handle timer, int client)
 					{
 						if(GermanSilence[client])	// The damage boosting effect of this unit's first Talent increases to 140% of the original
 						{
-							damage *= 1.35 * 1.4;
+							damage *= 1.35 * 1.2;
 						}
 						else	// Stored attacks deal 135% damage
 						{
@@ -200,8 +203,8 @@ public Action Weapon_German_Timer(Handle timer, int client)
 					{
 						Initiate_HomingProjectile(projectile,
 							client,
-							80.0,		// float lockonAngleMax,
-							20.0,		// float homingaSec,
+							120.0,		// float lockonAngleMax,
+							120.0,		// float homingaSec,
 							false,		// bool LockOnlyOnce,
 							true,		// bool changeAngles,
 							ang_Look,	// float AnglesInitiate[3]);
@@ -234,6 +237,10 @@ static stock bool IsValidHomingTarget(int projectile, int target, int owner)
 	
 	if(GermanSilence[owner])	// Ignores non-elite enemies while in ability
 	{
+		//pvp
+		if(target <= MaxClients)
+			return true;
+
 		if(!b_thisNpcIsABoss[target] &&
 		   !b_thisNpcIsARaid[target] &&
 		   !b_StaticNPC[target] &&
@@ -342,7 +349,7 @@ public void Weapon_German_M2(int client, int weapon, bool &result, int slot)
 			SDKhooks_SetManaRegenDelayTime(client, 1.0);
 
 			TF2_AddCondition(client, TFCond_FocusBuff, 30.0);
-			Attributes_SetMulti(weapon, 6, 0.6);
+			Attributes_SetMulti(weapon, 6, 0.8);
 
 			DataPack pack;
 			GermanSilence[client] = CreateDataTimer(30.0, Weapon_German_SilenceTimer, pack);
@@ -362,7 +369,7 @@ public Action Weapon_German_SilenceTimer(Handle timer, DataPack pack)
 	int weapon = EntRefToEntIndex(pack.ReadCell());
 	if(weapon != -1)
 	{
-		Attributes_SetMulti(weapon, 6, 1.0 / 0.6);
+		Attributes_SetMulti(weapon, 6, 1.0 / 0.8);
 	}
 	return Plugin_Stop;	
 }

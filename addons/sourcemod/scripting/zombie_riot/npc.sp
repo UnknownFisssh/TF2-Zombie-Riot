@@ -73,6 +73,7 @@ void NPC_ConfigSetup()
 	// Buildings
 	ObjectBarricade_MapStart();
 	ObjectDecorative_MapStart();
+	ObjectExplosive_MapStart();
 	ObjectAmmobox_MapStart();
 	ObjectArmorTable_MapStart();
 	ObjectPerkMachine_MapStart();
@@ -304,6 +305,7 @@ void NPC_ConfigSetup()
 	Donnerkrieg_OnMapStart_NPC();
 	Schwertkrieg_OnMapStart_NPC();
 	PhantomKnight_OnMapStart_NPC();
+	Nothing_There_OnMapStart_NPC();
 	BeheadedKamiKaze_OnMapStart_NPC();
 	Alt_Medic_Constructor_OnMapStart_NPC();	//3rd alt medic.
 	/*
@@ -999,6 +1001,7 @@ void NPC_ConfigSetup()
 	ErasusDebug_OnMapStart_NPC();
 	AnnoyingSpirit_OnMapStart_NPC();
 	FogOrbHeavy_OnMapStart_NPC();
+	FreeplaySigmaller_OnMapStart_NPC();
 
 	// Construction
 	MaterialCash_MapStart();
@@ -1259,6 +1262,9 @@ void NPC_ConfigSetup()
 	KevinmeryFollower_Setup();
 
 	VScript_CacheNPCs();
+	//precache instantlyx
+	if(HasNTOnServer())
+		NPC_GetByPlugin("npc_nothing_there");
 }
 
 void NPC_MapEnd()
@@ -1431,7 +1437,7 @@ static int CreateNPC(NPCData npcdata, int id, int client, float vecPos[3], float
 
 void NPC_PostSetup(int entity)
 {
-	if(GetTeam(entity) == 2)
+	if(GetTeam(entity) == 2 || Arena_Mode())
 	{
 		Rogue_AllySpawned(entity);
 		Waves_AllySpawned(entity);
@@ -1481,6 +1487,7 @@ void NPCDeath(int entity)
 {
 	Freeplay_OnNPCDeath(entity);
 	Cheese_OnNPCDeath(entity);
+	Gunsaw_NPCDeath(entity);
 	if(view_as<CClotBody>(entity).m_fCreditsOnKill)
 	{
 		int GiveMoney = 0;
@@ -1551,6 +1558,59 @@ void NPCDeath(int entity)
 
 Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
 {
+	CClotBody npc = view_as<CClotBody>(victim);
+	bool PreventHurtsound = false;
+	//Various checks to prevent hurt sounds and allat
+	if(attacker <= MaxClients && TeutonType[attacker] != TEUTON_NONE)
+	{
+		PreventHurtsound = true;
+	}
+	/*
+	if(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED)
+		PreventHurtsound = true;
+	//dont when bleeding
+	*/
+
+	int CheckHpThreshhold = ReturnEntityMaxHealth(victim);
+	int flHealth = GetEntProp(victim, Prop_Data, "m_iHealth");
+	if(flHealth >= CheckHpThreshhold)
+	{
+		CheckHpThreshhold = flHealth;
+	}
+	if(npc.m_iHealthBar > 0)
+	{
+		CheckHpThreshhold *= npc.m_iHealthBar;
+	}
+	float WhichThreshholdDamageAt = 0.05;
+	//normal enemies need to take atleast 0.5% of their hp as damage in 1 hit so it does the hurt animation
+	if(b_thisNpcIsARaid[victim])
+	{
+		WhichThreshholdDamageAt *= 0.025;
+	}
+	else if(b_thisNpcIsABoss[victim])
+	{
+		WhichThreshholdDamageAt *= 0.15;
+	}
+	else
+	{
+		//normal enemies should always
+		WhichThreshholdDamageAt = 0.0;
+	}
+	WhichThreshholdDamageAt *= float(CheckHpThreshhold);
+	if(WhichThreshholdDamageAt >= damage)
+	{
+		PreventHurtsound = true;
+	}
+	
+	if(PreventHurtsound)
+	{
+		float gameTime = GetGameTime(npc.index);
+
+		if(npc.m_flHeadshotCooldown < (gameTime + 0.0001))
+		{
+			npc.m_flHeadshotCooldown = gameTime + 0.0001;
+		}
+	}
 	Function func = func_NPCOnTakeDamage[victim];
 	if(func && func != INVALID_FUNCTION)
 	{
@@ -1596,6 +1656,7 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 #include "object/obj_brewing_stand.sp"
 #include "object/obj_revenant.sp"
 #include "object/obj_grill.sp"
+#include "object/obj_explosivebarrel.sp"
 #include "object/construction/obj_giant_lighthouse.sp"
 #include "object/construction/obj_const_stove.sp"
 #include "object/construction/obj_const_factory.sp"
@@ -1743,6 +1804,7 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 #include "npc/special/npc_sawrunner.sp"
 #include "npc/special/npc_l4d2_tank.sp"
 #include "npc/special/npc_phantom_knight.sp"
+#include "npc/special/npc_nothing_there.sp"
 #include "npc/special/npc_beheaded_kamikaze.sp"
 #include "npc/special/npc_doctor.sp"
 #include "npc/special/npc_drdam_special_delivery.sp"
@@ -2510,6 +2572,7 @@ Action NpcSpecificOnTakeDamage(int victim, int &attacker, int &inflictor, float 
 #include "npc/mutations/freeplay/npc_vanishingmatter.sp"
 #include "npc/mutations/freeplay/npc_annoying_spirit.sp"
 #include "npc/mutations/freeplay/npc_darkenedheavy.sp"
+#include "npc/mutations/freeplay/npc_freeplay_sigmaller.sp"
 
 #include "npc/construction/npc_base_building.sp"
 #include "npc/construction/npc_material_cash.sp"

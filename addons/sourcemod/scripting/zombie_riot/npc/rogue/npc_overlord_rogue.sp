@@ -255,7 +255,7 @@ methodmap OverlordRogue < CClotBody
 		{
 			b_thisNpcIsARaid[npc.index] = true;
 			npc.m_flNextDelayTime = GetGameTime(npc.index) + 2.0;
-			RaidModeTime = GetGameTime() + 500.0;
+			RaidModeTime = GetGameTime() + 300.0;
 		}
 
 		GiveNpcOutLineLastOrBoss(npc.index, true);
@@ -424,12 +424,12 @@ public void OverlordRogue_ClotThink(int iNPC)
 				npc.FaceTowards(vecTarget, 20000.0);
 				
 				npc.DispatchParticleEffect(npc.index, "mvm_soldier_shockwave", NULL_VECTOR, NULL_VECTOR, NULL_VECTOR, npc.FindAttachment("anim_attachment_LH"), PATTACH_POINT_FOLLOW, true);
-				
+
 				// Nerf the burn on boss rush
 				if (npc.m_bBossRushDuo)
 				{
 					if (Can_I_See_Enemy(npc.index, PrimaryThreatIndex))
-						NPC_Ignite(PrimaryThreatIndex, npc.index,8.0, -1, 20.5 * 0.75);
+						NPC_Ignite(PrimaryThreatIndex, npc.index,8.0, -1, 20.5);
 				}
 				else
 				{

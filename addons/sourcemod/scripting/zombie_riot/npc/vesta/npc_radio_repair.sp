@@ -52,6 +52,8 @@ static const char g_TeleportSounds[][] = {
 
 static const char g_MeleeAttackSounds[] = "weapons/knife_swing.wav";
 
+static int NPCId;
+
 void VestaRepair_OnMapStart_NPC()
 {
 	NPCData data;
@@ -63,7 +65,12 @@ void VestaRepair_OnMapStart_NPC()
 	data.Category = Type_Vesta;
 	data.Precache = ClotPrecache;
 	data.Func = ClotSummon;
-	NPC_Add(data);
+	NPCId=NPC_Add(data);
+}
+
+int VictorianRadioRepair_ID()
+{
+	return NPCId;
 }
 
 static void ClotPrecache()
@@ -208,7 +215,7 @@ methodmap VestaRepair < CClotBody
 			char buffers[3][64];
 			ExplodeString(data, ";", buffers, sizeof(buffers), sizeof(buffers[]));
 			ReplaceString(buffers[0], 64, "target", "");
-			int targetdata = StringToInt(buffers[0]);
+			int targetdata = EntRefToEntIndex(StringToInt(buffers[0]));
 			if(IsValidAlly(npc.index, targetdata))
 			{
 				npc.m_iMainTarget = targetdata;
@@ -547,6 +554,7 @@ static int VestaRepair_Work(VestaRepair npc, float gameTime, float distance)
 				
 				HealEntityGlobal(npc.index, npc.m_iTarget, 3000.0, 1.0);
 				ApplyStatusEffect(npc.index, npc.m_iTarget, "Defensive Backup", 1.1);
+				ApplyStatusEffect(npc.index, npc.m_iTarget, "Extreamly Defensive Backup", 1.1);
 				
 				float WorldSpaceVec[3]; WorldSpaceCenter(npc.m_iTarget, WorldSpaceVec);
 				

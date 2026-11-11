@@ -165,6 +165,7 @@ methodmap AlliedHeartbrokenVisualiserAbility < CClotBody
 			if(!ModelPath[0])
 				continue;
 
+			int SetSkin = GetTeam(client) - 2;
 			for(int Repeat=0; Repeat<6; Repeat++)
 			{
 				int WearableIndex = i_Wearable[npc.index][Repeat];
@@ -179,6 +180,7 @@ methodmap AlliedHeartbrokenVisualiserAbility < CClotBody
 							AcceptEntityInput(WearablePostIndex, "SetBodyGroup");
 							npc.m_iWearablePlayerModel = WearablePostIndex;
 						}
+						SetEntProp(WearablePostIndex, Prop_Send, "m_nSkin", SetSkin);
 						SetEntityRenderColor(WearablePostIndex, 255, 255, 255, 255);
 						i_Wearable[npc.index][Repeat] = EntIndexToEntRef(WearablePostIndex);
 					}
@@ -331,10 +333,11 @@ void Heartbroken_ParryDohhulan(int owner, AlliedHeartbrokenVisualiserAbility npc
 		int ShieldGive;
 		RemoveSpecificBuff(owner, "Shielding");
 		float duration = 0.5;
-		ShieldGive = ReturnEntityMaxHealth(owner) / 10;
+		ShieldGive = ReturnEntityMaxHealth(owner) / 13;
 		ApplyStatusEffect(owner, owner, "Shielding", duration + 0.5);
-		if(LastMann)
-			ShieldGive *= 2;
+		GiveCoffinOnDamage(owner,owner,  0.0, 0.25);
+
+		ShieldGive *= 2;
 
 		Shielding_Add(owner, ShieldGive);
 		//we did a parry?

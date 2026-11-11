@@ -32,7 +32,30 @@ void Ritualist_Enable(int client, int weapon)
 
 		if(!WeaponTimer[client])
 			WeaponTimer[client] = CreateTimer(0.5, RitualistTimer, client, TIMER_REPEAT);
+
 	}
+}
+bool Ritualist_ThereisRitualistNecrosis()
+{
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if(Ritualist_IsNecro(client))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+bool Ritualist_IsNecro(int client)
+{
+	if(WeaponTimer[client] && IsValidClient(client))
+	{
+		if(WeaponType[client] == Ritualist_Necrosis)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 public void RitualistCancelTauntDo(int client)
 {
@@ -103,6 +126,8 @@ void Weapon_Ritualist_ProjectileTouch(int entity, int target)
 		GetAngleVectors(angles, vecForward, NULL_VECTOR, NULL_VECTOR);
 		static float Entity_Position[3];
 		WorldSpaceCenter(target, Entity_Position);
+		static float PosMe[3];
+		WorldSpaceCenter(entity, PosMe);
 
 		int owner = EntRefToEntIndex(i_WandOwner[entity]);
 		if(owner != -1)
@@ -121,9 +146,7 @@ void Weapon_Ritualist_ProjectileTouch(int entity, int target)
 				}
 				case Ritualist_Nervous:
 				{
-					ApplyStatusEffect(owner, target, "Elemental Amplification", 0.5);
-					Explode_Logic_Custom(f_WandDamage[entity] * 0.2, owner, entity, weapon, .FunctionToCallBeforeHit = NervousExplodeBefore);
-					EmitSoundToAll(SOUND_ZAP, entity, SNDCHAN_STATIC, 65, _, 0.65);
+					Explode_Logic_Custom(f_WandDamage[entity] * 0.5, owner, owner, weapon,PosMe, .FunctionToCallBeforeHit = NervousExplodeBefore);
 
 					//float pos[3];
 					//GetEntPropVector(entity, Prop_Data, "m_vecAbsOrigin", pos);
@@ -151,6 +174,8 @@ void Weapon_Ritualist_ProjectileTouch(int entity, int target)
 		int owner = EntRefToEntIndex(i_WandOwner[entity]);
 		if(owner != -1)
 		{
+			static float PosMe[3];
+			WorldSpaceCenter(entity, PosMe);
 			int weapon = EntRefToEntIndex(i_WandWeapon[entity]);
 			
 			switch(WeaponType[owner])
@@ -161,7 +186,7 @@ void Weapon_Ritualist_ProjectileTouch(int entity, int target)
 				}
 				case Ritualist_Nervous:
 				{
-					Explode_Logic_Custom(f_WandDamage[entity] * 2.5, owner, owner, weapon, .FunctionToCallBeforeHit = NervousExplodeBefore);
+					Explode_Logic_Custom(f_WandDamage[entity] * 0.5, owner, owner, weapon,PosMe, .FunctionToCallBeforeHit = NervousExplodeBefore);
 					EmitSoundToAll(SOUND_ZAP, entity, SNDCHAN_STATIC, 65, _, 0.65);
 
 					//float pos[3];
@@ -183,6 +208,13 @@ static Action RitualistTimer(Handle timer, int client)
 {
 	if(IsClientInGame(client) && IsPlayerAlive(client))
 	{
+		if(!HasSpecificBuff(client, "Empty Notes"))
+		{
+			if(WeaponType[client] == Ritualist_Necrosis && OperaMute_Thereis())
+			{
+				ApplyStatusEffect(client, client, "Empty Notes", 999999.9);
+			}
+		}
 		int weapon = EntRefToEntIndex(WeaponRef[client]);
 		if(weapon != -1)
 		{
@@ -202,7 +234,11 @@ static Action RitualistTimer(Handle timer, int client)
 		}
 		
 	}
-
+	if(IsValidClient(client))
+	{
+		RemoveSpecificBuff(client, "Shielding");
+		RemoveSpecificBuff(client, "Empty Notes");
+	}
 	WeaponTimer[client] = null;
 	return Plugin_Stop;
 }
@@ -231,6 +267,10 @@ void RitualistApplyBuff(int attacker, int victim, float &damage, int weapon)
 			int BeamIndex = ConnectWithBeam(attacker, victim, 255, 125, 125, 3.0, 3.0, 1.35, "sprites/laserbeam.vmt");
 			SetEntityRenderFx(BeamIndex, RENDERFX_FADE_FAST);
 			CreateTimer(1.0, Timer_RemoveEntity, EntIndexToEntRef(BeamIndex), TIMER_FLAG_NO_MAPCHANGE);
+		}
+		if(HasSpecificBuff(victim, "Empty Notes") && OperaMute_WeaponHas(victim))
+		{
+			DurationGive *= 1.5;
 		}
 		ApplyStatusEffect(attacker, victim, "Liberal Tango", DurationGive);
 	}
@@ -391,6 +431,20 @@ void StatusEffects_Ritualist()
 	data.MovementspeedModif			= -1.0;
 	data.Positive 					= true;
 	data.ShouldScaleWithPlayerCount = true;
+	data.Slot						= 0;
+	data.SlotPriority				= 0;
+	data.AttackspeedBuff			= -1.0;
+	StatusEffect_AddGlobal(data);
+	
+	strcopy(data.BuffName, sizeof(data.BuffName), "Empty Notes");
+	strcopy(data.HudDisplay, sizeof(data.HudDisplay), "♪");
+	strcopy(data.AboveEnemyDisplay, sizeof(data.AboveEnemyDisplay), "");
+	data.DamageTakenMulti 			= 0.95;	// +5% res
+	data.DamageDealMulti			= 0.5;	// +5% dmg
+	data.MovementspeedModif			= -1.0;
+	data.Positive 					= true;
+	data.ShouldScaleWithPlayerCount = false;
+	data.AttackspeedBuff			= (1.0 / 1.05);
 	data.Slot						= 0;
 	data.SlotPriority				= 0;
 	data.AttackspeedBuff			= -1.0;

@@ -138,6 +138,7 @@ public void Vamp_ActivateThrow(int client, int weapon, int pap, bool cleaver)
 		
 	if (Ability_Check_Cooldown(client, 2) < 0.0)
 	{
+		Rogue_OnAbilityUse(client, weapon);
 		Ability_Apply_Cooldown(client, 2, cleaver ? Vamp_ThrowCD_Cleaver[pap] : Vamp_ThrowCD_Normal[pap]);
 		
 		int BleedStacks = cleaver ? Vamp_BleedStacksOnThrow_Cleaver[pap] : Vamp_BleedStacksOnThrow_Normal[pap];
@@ -405,7 +406,7 @@ public Action Vamp_BloodlustTick(Handle bloodlust, any pack)
 		return Plugin_Stop;
 	}	
 	
-	if (b_NpcHasDied[victim]) //Npc died, stop bleed and stop life leech
+	if (!IsEntityAlive(victim)) //Npc died, stop bleed and stop life leech
 	{
 		BleedAmountCountStack[victim] -= 1;
 		return Plugin_Stop;

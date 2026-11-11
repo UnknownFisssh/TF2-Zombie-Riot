@@ -97,12 +97,15 @@ bool Saga_IsChargeWeapon(int client, int weapon)
 	return false;
 }
 
-void Saga_ChargeReduction(int client, int weapon, float time)
+void Saga_ChargeReduction(int client, int weapon, float time, float Cooldownmin = 999999.0)
 {
-	Passanger_ChargeReduced(client, time);
-	Gladiia_ChargeReduction(client, weapon, time);
+	if(Cooldownmin >= 99999.9)
+	{
+		Passanger_ChargeReduced(client, time);
+		Gladiia_ChargeReduction(client, weapon, time);
+	}
 
-	if(WeaponTimer[client] && EntRefToEntIndex(WeaponRef[client]) == weapon)
+	if(Cooldownmin >= 99999.9 && WeaponTimer[client] && EntRefToEntIndex(WeaponRef[client]) == weapon)
 	{
 		WeaponCharge[client] += Int_CooldownReductionDo(client, RoundToNearest(time)) + 1;
 		TriggerTimer(WeaponTimer[client], false);
@@ -111,7 +114,7 @@ void Saga_ChargeReduction(int client, int weapon, float time)
 	for(int i = 1; i < 4; i++)
 	{
 		float cooldown = Ability_Check_Cooldown(client, i, weapon);
-		if(cooldown > 0.0)
+		if(cooldown > 0.0 && Cooldownmin > cooldown)
 		{
 			Ability_Apply_Cooldown(client, i, cooldown - time, weapon, true);
 			break;
@@ -292,7 +295,7 @@ static void Weapon_Saga_M2(int client, int weapon, bool mastery)
 		b_LagCompNPC_No_Layers = true;
 		StartLagCompensation_Base_Boss(client);				
 		Explode_Logic_Custom(damage, client, client, weapon, _, Range, _, _, false, 6,_,_,SagaCutFirst);
-		FinishLagCompensation_Base_boss();
+		FinishLagCompensation_Base_boss(.client = client);
 		
 		i_ExplosiveProjectileHexArray[client] = value;
 		TF2_AddCondition(client, TFCond_DefenseBuffed, 1.0);
@@ -323,7 +326,7 @@ public Action Saga_DelayedExplode(Handle timer, int userid)
 			b_LagCompNPC_No_Layers = true;
 			StartLagCompensation_Base_Boss(client);						
 			Explode_Logic_Custom(damage, client, client, weapon, _, 400.0, _, _, false, 99,_,_,SagaCutLast);
-			FinishLagCompensation_Base_boss();			
+			FinishLagCompensation_Base_boss(.client = client);			
 			i_ExplosiveProjectileHexArray[client] = value;
 		}
 	}
@@ -340,7 +343,8 @@ void Saga_OnTakeDamage(int victim, int &attacker, float &damage, int &weapon, in
 	{
 		damage = 0.0;
 	}
-	else if(view_as<CClotBody>(victim).m_iHealthBar < 1 && RoundToFloor(damage) >= GetEntProp(victim, Prop_Data, "m_iHealth"))
+	//only players
+	else if(victim > MaxClients && view_as<CClotBody>(victim).m_iHealthBar < 1 && RoundToFloor(damage) >= GetEntProp(victim, Prop_Data, "m_iHealth"))
 	{
 		damage = float(GetEntProp(victim, Prop_Data, "m_iHealth") - 1);
 

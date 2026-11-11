@@ -25,6 +25,12 @@ void Commands_PluginStart()
 	AddCommandListener(OnJoinClass, "joinclass");
 #endif
 
+#if defined ZR
+	AddCommandListener(OnKillBind, "kill");
+	AddCommandListener(OnKillBind, "explode");
+	AddCommandListener(OnTeamName, "tournament_teamname");
+#endif
+
 } 
 
 public Action OnClientCommandKeyValues(int client, KeyValues kv)
@@ -179,7 +185,7 @@ void JoinClassInternal(int client, TFClassType ClassChangeTo)
 		FailedInstachange = true;
 
 	if(dieingstate[client] != 0)
-		FailedInstachange = true;
+		FailedInstachange = true;	
 	
 	if(!IsPlayerAlive(client))
 		FailedInstachange = true;
@@ -187,8 +193,12 @@ void JoinClassInternal(int client, TFClassType ClassChangeTo)
 	if(f_TimeUntillNormalHeal[client] > GetGameTime())
 		FailedInstachange = true;
 		
+	if(Arena_Mode() && f_TimeUntillNormalHeal[client] + 10.0 > GetGameTime())
+		FailedInstachange = true;
+		
 	if(f_InBattleHudDisableDelay[client] > GetGameTime())
 		FailedInstachange = true;
+
 
 	
 	if(ClassChangeTo <= TFClass_Unknown)
@@ -380,14 +390,42 @@ bool DoInteractKeyLogic(float angles[3], int client)
 		if(IsValidEntity(entity))
 		{
 			Object_Interact(client, GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon"), client);
+			if(EntityOnAllyInteract[client] && EntityOnAllyInteract[client] != INVALID_FUNCTION)
+			{
+				Call_StartFunction(null, EntityOnAllyInteract[client]);
+				Call_PushCell(client);
+				Call_PushCell(entity);
+				Call_Finish();
+			}
 		}
 	}
 #endif
 	int weapon_holding = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	StartPlayerOnlyLagComp(client, true);
-	if(InteractKey(client, weapon_holding, true))
+	int EntityAlly = false;
+	if(InteractKey(client, weapon_holding, true, EntityAlly))
 		Success = true;
 
+	
+	if(Success && EntityOnAllyInteract[client] && EntityOnAllyInteract[client] != INVALID_FUNCTION)
+	{
+		Call_StartFunction(null, EntityOnAllyInteract[client]);
+		Call_PushCell(client);
+		Call_PushCell(EntityAlly);
+		Call_Finish();
+	}
 	EndPlayerOnlyLagComp(client);
 	return Success;
 }
+
+#if defined ZR
+static Action OnKillBind(int client, const char[] command, int args)
+{
+	return Gunsaw_KillBind(client) ? Plugin_Handled : Plugin_Continue;
+}
+
+static Action OnTeamName(int client, const char[] command, int args)
+{
+	return Native_CanRenameNpc(client) ? Plugin_Continue : Plugin_Handled;
+}
+#endif

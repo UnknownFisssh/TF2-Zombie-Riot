@@ -260,7 +260,7 @@ void BossBattleSummonRaidboss(int bosssummonbase)
 			enemy.ExtraDamage *= 1.1;
 			//he doesnt really scale? i dont know what to do.
 			enemy.Health = RoundToNearest(float(enemy.Health) * 1.0); 
-			if(CurrentModifOn() == 4) // TURBOLENCES
+			if(ZR_Get_Modifier() == 4) // TURBOLENCES
 			{
 				enemy.ExtraDamage *= 0.90;
 				enemy.ExtraThinkSpeed *= 1.20;
@@ -324,7 +324,7 @@ void BossBattleSummonRaidboss(int bosssummonbase)
 			
 			enemy.ExtraDamage *= 0.7;
 			enemy.Health = RoundToNearest(float(enemy.Health) * 2.5); 
-			if(CurrentModifOn() == 4) // TURBOLENCES
+			if(ZR_Get_Modifier() == 4) // TURBOLENCES
 			{
 				enemy.ExtraDamage *= 0.65;
 				enemy.Health = RoundToNearest(float(enemy.Health) * 0.75); 
@@ -459,9 +459,9 @@ void BossBattleSummonRaidboss(int bosssummonbase)
 			PluginName = "npc_boss_reila";	
 			Format(CharData, sizeof(CharData), "%s%s",CharData, "force_final_battle");
 			
-			enemy.ExtraDamage *= 1.05;
+			enemy.ExtraDamage *= 0.75;
 			//no umbrals so buff hard
-			enemy.Health = RoundToNearest(float(enemy.Health) * 1.25); 
+			enemy.Health = RoundToNearest(float(enemy.Health) * 1.35); 
 		}
 		case 32:
 		{
@@ -479,7 +479,7 @@ void BossBattleSummonRaidboss(int bosssummonbase)
 			
 			enemy.ExtraDamage *= 0.45;
 			enemy.Health = RoundToNearest(float(enemy.Health) * 1.0); 
-			if(CurrentModifOn() == 4) // TURBOLENCES
+			if(ZR_Get_Modifier() == 4) // TURBOLENCES
 			{
 				enemy.ExtraDamage *= 0.65;
 				enemy.Health = RoundToNearest(float(enemy.Health) * 0.75); 

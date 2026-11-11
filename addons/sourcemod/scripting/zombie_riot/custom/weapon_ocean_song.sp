@@ -344,7 +344,7 @@ void DoHealingOcean(int client, int target, float range = 160000.0, float extra_
 	float targPos[3];
 	for(int ally=1; ally<=MaxClients; ally++)
 	{
-		if(IsClientInGame(ally) && IsPlayerAlive(ally) && dieingstate[ally] == 0 && TeutonType[ally] == TEUTON_NONE)
+		if(IsClientInGame(ally) && IsPlayerAlive(ally) && dieingstate[ally] == 0 && TeutonType[ally] == TEUTON_NONE && GetTeam(client) == GetTeam(ally))
 		{
 			GetEntPropVector(ally, Prop_Data, "m_vecAbsOrigin", targPos);
 			if (GetVectorDistance(BannerPos, targPos, true) <= range) // 650.0
@@ -357,6 +357,12 @@ void DoHealingOcean(int client, int target, float range = 160000.0, float extra_
 					if(Store_IsWeaponFaction(ally, weapon, Faction_Dweller))
 					{
 						healingMulti = 1.0825;
+					}
+					if(!HordingsBuff && ally != client)
+					{	
+						Saga_ChargeReduction(ally, weapon, 0.03);
+						if(extra_heal != 1.0)
+							Saga_ChargeReduction(ally, weapon, 1.0);
 					}
 				}
 
@@ -391,7 +397,7 @@ void DoHealingOcean(int client, int target, float range = 160000.0, float extra_
 	for(int entitycount_again; entitycount_again<i_MaxcountNpcTotal; entitycount_again++)
 	{
 		int ally = EntRefToEntIndexFast(i_ObjectsNpcsTotal[entitycount_again]);
-		if (IsValidEntity(ally) && !b_NpcHasDied[ally] && GetTeam(ally) == TFTeam_Red)
+		if (IsValidEntity(ally) && !b_NpcHasDied[ally] && GetTeam(client) == GetTeam(ally))
 		{
 			GetEntPropVector(ally, Prop_Data, "m_vecAbsOrigin", targPos);
 			if (GetVectorDistance(BannerPos, targPos, true) <= range)

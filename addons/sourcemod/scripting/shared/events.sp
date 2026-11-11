@@ -22,7 +22,8 @@ void Events_PluginStart()
 	HookEvent("mvm_mission_complete", OnWinPanel, EventHookMode_Pre);
 	HookEvent("restart_timer_time", OnRestartTimer, EventHookMode_Pre);
 	HookEvent("arrow_impact", EventOverride_ArrowImpact, EventHookMode_Pre);
-
+	HookEvent("tournament_stateupdate", OnStateUpdate, EventHookMode_Post);
+	HookEvent("teamplay_round_restart_seconds", OnAllTeamReady, EventHookMode_Pre);
 #endif	
 	
 	HookUserMessage(GetUserMessageId("SayText2"), Hook_BlockUserMessageEx, true);
@@ -78,11 +79,36 @@ float BonePosition[3], float BoneAngles[3], int ProjectileType, bool IsCrit)
 #endif	
 public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
+	static float FrameTime;
+	if(fabs(FrameTime - GetGameTime()) < 0.05)
+		return;
+	
+	FrameTime = GetGameTime();
 #if defined ZR
 
-	if(Bool_IsNonZRMap())
-		DeleteAllPropsBad_NonZrMaps();
+	Barracks_InstaResearchEverything = false;
+	if(!InZRMap())
+		DeleteAllBadEntities_NonZrMaps();
 	
+	if (Arena_Mode())
+	{
+		char classname[36];
+		for( int i = 1; i <= MAXENTITIES; i++ ) 
+		{
+			if(!IsValidEntity(i))
+				continue;
+			
+			GetEntityClassname(i, classname, sizeof(classname));
+			if(!StrContains(classname, "item_ammopack"))
+			{
+				RemoveEntity(i);
+			}
+		}
+	}
+	else if (!CanMapSpawnPickups())
+	{
+		DeleteAllPickups();
+	}
 	
 	DeleteShadowsOffZombieRiot();
 	EventRoundStartMusicFilter();
@@ -111,7 +137,9 @@ public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 		}	
 	}
 	
-	CreateMVMPopulator();
+	if(!Arena_Mode())
+		CreateMVMPopulator();
+	
 	Zero(b_BobsCuringHand_Revived);
 	
 	Escape_RoundStart();
@@ -124,6 +152,9 @@ public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 	Zealot_RoundStart();
 	Drops_ResetChances();
 	NPCStats_HandlePaintedWearables();
+	Gunsaw_RoundStart();
+	Barracks_RoundStart();
+	IndexFather_ResetAllStats();
 
 	for(int client=1; client<=MaxClients; client++)
 	{
@@ -188,6 +219,22 @@ public void OnSetupFinished(Event event, const char[] name, bool dontBroadcast)
 	BuildingVoteEndResetCD();
 	Waves_SetReadyStatus(0);
 	Waves_Progress();
+}
+
+public void OnStateUpdate(Event event, const char[] name, bool dontBroadcast)
+{
+	int ready = event.GetInt("readystate");
+	Arena_StateUpdate(ready);
+}
+
+public Action OnAllTeamReady(Event event, const char[] name, bool dontBroadcast)
+{
+	int time = event.GetInt("seconds");
+	Action action = Arena_AllTeamsReady(time);
+	if(action == Plugin_Changed)
+		event.SetInt("seconds", time);
+	
+	return action;
 }
 #endif
 
@@ -273,8 +320,8 @@ public Action OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 	Waves_RoundEnd();
 	Escape_RoundEnd();
 	Rogue_RoundEnd();
-	Construction_RoundEnd();
 	BetWar_RoundEnd();
+	Arena_RoundEnd();
 	CurrentGame = 0;
 	RoundStartTime = 0.0;
 	if(event != INVALID_HANDLE && event.GetInt("team") == 3)
@@ -334,7 +381,7 @@ public void OnPlayerResupply(Event event, const char[] name, bool dontBroadcast)
 		if(WaitingInQueue[client])
 			TeutonType[client] = TEUTON_WAITING;
 
-		if(i_ClientHasCustomGearEquipped[client] > 1)
+		if(i_ClientHasCustomGearEquipped[client] == CUSTOMGEAR_QUANTUM_SUIT)
 		{
 			SDKCall_GiveCorrectAmmoCount(client);
 
@@ -592,7 +639,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 		
 	i_HealthBeforeSuit[client] = 0;
 	f_HealthBeforeSuittime[client] = GetGameTime() + 0.25;
-	i_ClientHasCustomGearEquipped[client] = false;
+	i_ClientHasCustomGearEquipped[client] = CUSTOMGEAR_NONE;
 	UnequipQuantumSet(client);
 //	CreateTimer(0.0, QuantumDeactivate, EntIndexToEntRef(client), TIMER_FLAG_NO_MAPCHANGE); //early cancel out!, save the wearer!
 	//
@@ -606,6 +653,7 @@ public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 	PurnellDeathsound(client);
 	Vehicle_Exit(client, true);
 	SdkHooks_SetAndUpdateArmorClientText(client);
+	Gunsaw_PlayerDeath(client);
 #endif
 
 #if defined RPG
@@ -734,7 +782,7 @@ void CheckAndValidifyTeam()
 {
 	for(int client=1; client<=MaxClients; client++)
 	{
-		if(IsValidClient(client) && TeamNumber[client] <= 4) //If their team is customly set, dont do this
+		if(IsValidClient(client) && TeamNumber[client] < 4) //If their team is customly set, dont do this
 			TeamNumber[client] = GetEntProp(client, Prop_Data, "m_iTeamNum");
 	}
 }
@@ -800,7 +848,7 @@ public Action ChatSetupTipTimer(Handle TimerHandle)
 	return Plugin_Stop;
 }
 
-void DeleteAllPropsBad_NonZrMaps()
+void DeleteAllBadEntities_NonZrMaps()
 {
 	ServerCommand("sv_cheats 1; nav_load ; sv_cheats 0");
 	for( int i = 1; i <= MAXENTITIES; i++ ) 
@@ -809,14 +857,31 @@ void DeleteAllPropsBad_NonZrMaps()
 			continue;
 		static char classname[36];
 		GetEntityClassname(i, classname, sizeof(classname));
-		if(!StrContains(classname, "prop_door") ||
-		!StrContains(classname, "item_healthkit_") ||
-		!StrContains(classname, "item_ammopack_") ||
-		!StrContains(classname, "item_teamflag") ||
-		!StrContains(classname, "func_regenerate") ||
-		!StrContains(classname, "func_respawnroom") ||
-		!StrContains(classname, "func_respawnroomvisualizer") ||
-		!StrContains(classname, "func_door"))
+		if(!StrContains(classname, "item_teamflag") ||
+			!StrContains(classname, "func_regenerate") ||
+			!StrContains(classname, "func_respawnroom") ||
+			!StrContains(classname, "func_respawnroomvisualizer"))
+		{
+			RemoveEntity(i);
+		}
+		else if(!StrContains(classname, "prop_door") || !StrContains(classname, "func_door"))
+		{
+			if(!Arena_Mode())
+				RemoveEntity(i);
+		}
+	}
+}
+
+void DeleteAllPickups()
+{
+	for( int i = 1; i <= MAXENTITIES; i++ ) 
+	{
+		if(!IsValidEntity(i))
+			continue;
+		char classname[36];
+		GetEntityClassname(i, classname, sizeof(classname));
+		if(!StrContains(classname, "item_healthkit") ||
+		!StrContains(classname, "item_ammopack"))
 		{
 			RemoveEntity(i);
 		}

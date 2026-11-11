@@ -37,6 +37,7 @@ enum struct MiniBoss
 	bool SoundCustom;
 	char Sound[128];
 	char Icon[128];
+	char Data[128];
 	char Text_1[128];
 	char Text_2[128];
 	char Text_3[128];
@@ -143,7 +144,6 @@ static int VotedFor[MAXPLAYERS];
 static float VoteEndTime;
 static float f_ZombieAntiDelaySpeedUp;
 static int i_ZombieAntiDelaySpeedUp;
-static Handle WaveTimer;
 static float ProgressTimerEndAt;
 static bool ProgressTimerType;
 static bool FirstMapRound;
@@ -266,6 +266,8 @@ float MinibossScalingReturn()
 	if(BetWar_Mode())
 		return 1.0;
 	if(Dungeon_Mode())
+		return 1.0;
+	if(Arena_Mode())
 		return 1.0;
 
 	return MinibossScalingHandle;
@@ -459,18 +461,18 @@ static void DoMultiScalingTest(int InPutPlayer, int InPutRebel, float OutPut[9])
 	if(TmpePlayerCountBuffScaling > 1.0)
 		TmpePlayerCountBuffScaling = 1.0;
 	
-	//Shouldnt be lower then 0.25
-	if(TmpePlayerCountBuffScaling < 0.25)
-		TmpePlayerCountBuffScaling = 0.25;
+	//Shouldnt be lower then 0.35
+	if(TmpePlayerCountBuffScaling < 0.35)
+		TmpePlayerCountBuffScaling = 0.35;
 	OutPut[6]=TmpePlayerCountBuffScaling;
 
 	float TmpePlayerCountBuffAttackspeedScaling = 6.0 / playercount;
 	if(TmpePlayerCountBuffAttackspeedScaling > 1.0)
 		TmpePlayerCountBuffAttackspeedScaling = 1.0;
 	
-	//Shouldnt be lower then 0.5
-	if(TmpePlayerCountBuffAttackspeedScaling < 0.5)
-		TmpePlayerCountBuffAttackspeedScaling = 0.5;
+	//Shouldnt be lower then 0.65
+	if(TmpePlayerCountBuffAttackspeedScaling < 0.65)
+		TmpePlayerCountBuffAttackspeedScaling = 0.65;
 	OutPut[7]=TmpePlayerCountBuffAttackspeedScaling;
 
 	float TmpePlayerCountResBuffScaling = (1.0 - (playercount / 48.0)) + 0.1;
@@ -522,7 +524,7 @@ public Action Waves_AdminsRaidTimeAddCmd(int client, int args)
 
 bool Waves_InVote()
 {
-	return (Rogue_Mode() || Construction_Mode() || Dungeon_Mode() || Voting || VotingMods);
+	return (Rogue_Mode() || Construction_Mode() || Dungeon_Mode() || Arena_Mode() || Voting || VotingMods);
 }
 
 public Action Waves_RevoteCmd(int client, int args)
@@ -531,7 +533,7 @@ public Action Waves_RevoteCmd(int client, int args)
 	{
 		BetWar_RevoteCmd(client);
 	}
-	else if(Rogue_Mode() || Construction_Mode() || Dungeon_Mode())
+	else if(Rogue_Mode() || Construction_Mode() || Dungeon_Mode() || Arena_Mode())
 	{
 		Rogue_RevoteCmd(client);
 	}
@@ -553,7 +555,7 @@ bool Waves_CallVote(int client, int force = 0)
 	if(BetWar_Mode())
 		return BetWar_CallVote(client);
 	
-	if(Rogue_Mode() || Construction_Mode() || Dungeon_Mode())
+	if(Rogue_Mode() || Construction_Mode() || Dungeon_Mode() || Arena_Mode())
 		return Rogue_CallVote(client);
 	
 	if((Voting || VotingMods) && (force || !VotedFor[client]))
@@ -862,6 +864,18 @@ void Waves_SetupVote(KeyValues map, bool modifierOnly = false)
 	
 	if(!modifierOnly)
 		StartCash = kv.GetNum("cash", 700);
+	
+	// Arena Gamemode
+	if(map && kv.GetNum("arenapvp"))
+	{
+		if(!modifierOnly)
+			Arena_SetupVote(kv);
+
+		if(kv != map)
+			delete kv;
+		
+		return;
+	}
 	
 	// Dungeon Gamemode
 	if(map && kv.GetNum("dungeon"))
@@ -1223,6 +1237,7 @@ void Waves_SetupMiniBosses(KeyValues map)
 			}
 				
 			kv.GetString("icon", boss.Icon, sizeof(boss.Icon));
+			kv.GetString("data", boss.Data, sizeof(boss.Data));
 			
 			kv.GetString("text_1", boss.Text_1, sizeof(boss.Text_1));
 			kv.GetString("text_2", boss.Text_2, sizeof(boss.Text_2));
@@ -1325,6 +1340,7 @@ void WavesDeleteSet(int ArrayDo = Rounds_Default)
 		delete Rounds[ArrayDo];
 	}
 }
+
 void Waves_SetupWaves(KeyValues kv, bool start, int ArrayDo = Rounds_Default)
 {
 	Round round;
@@ -1417,6 +1433,12 @@ void Waves_SetupWaves(KeyValues kv, bool start, int ArrayDo = Rounds_Default)
 		kv.GetString("difficulty", buffer, sizeof(buffer));
 		if(buffer[0])
 			Waves_SetDifficultyName(buffer);
+		
+		kv.GetString("character_hired_by", buffer, sizeof(buffer));
+		if(buffer[0])
+			strcopy(s_MissionClient, sizeof(s_MissionClient), buffer);
+		else
+			s_MissionClient = DEFAULT_MISSION_CLIENT;
 			
 		round.music_setup.SetupKv("music_setup", kv);
 		
@@ -1735,7 +1757,7 @@ void Waves_RoundStart(bool event = false)
 
 	Kit_Fractal_ResetRound();
 	
-	if(Construction_Mode() || Rogue_Mode() || BetWar_Mode() || Dungeon_Mode())
+	if(Construction_Mode() || Rogue_Mode() || BetWar_Mode() || Dungeon_Mode() || Arena_Mode())
 	{
 		
 	}
@@ -1811,7 +1833,11 @@ void Waves_RoundStart(bool event = false)
 	if(CvarInfiniteCash.BoolValue)
 		CurrentCash = 999999;
 	
-	if(Dungeon_Mode())
+	if(Arena_Mode())
+	{
+		Arena_StartSetup();
+	}
+	else if(Dungeon_Mode())
 	{
 		Dungeon_StartSetup();
 	}
@@ -1847,7 +1873,7 @@ void Waves_RoundEnd()
 	CurrentWave[Rounds_Default] = -1;
 	Medival_Difficulty_Level = 0.0; //make sure to set it to 0 othrerwise waves will become impossible
 
-	if(Rogue_Mode() || Construction_Mode() || Dungeon_Mode())
+	if(Rogue_Mode() || Construction_Mode() || Dungeon_Mode() || Arena_Mode())
 		delete Rounds[Rounds_Default];
 }
 
@@ -2054,6 +2080,8 @@ public Action Waves_EndVote(Handle timer, int WhatWasMyCancel)
 				EmitSoundToAll("ui/chime_rd_2base_neg.wav", _, SNDCHAN_STATIC, SNDLEVEL_NONE, _, 1.0, 70);
 				EmitSoundToAll("ui/chime_rd_2base_pos.wav", _, SNDCHAN_STATIC, SNDLEVEL_NONE, _, 1.0, 120);
 				
+				strcopy(WhatModifierSetting, sizeof(WhatModifierSetting), vote.Name);
+				
 				if(highest > 0)
 				{
 					float multi = float(vote.Level) / 1000.0;
@@ -2069,8 +2097,6 @@ public Action Waves_EndVote(Handle timer, int WhatWasMyCancel)
 					
 					FormatEx(WhatDifficultySetting, sizeof(WhatDifficultySetting), "%s [%s]", WhatDifficultySetting_Internal, vote.Name);
 					Waves_SetDifficultyName(WhatDifficultySetting);
-
-					strcopy(WhatModifierSetting, sizeof(WhatModifierSetting), vote.Name);
 
 					char funcs[5][64];
 					ExplodeString(vote.Config, ";", funcs, sizeof(funcs), sizeof(funcs[]));
@@ -2154,7 +2180,7 @@ bool Waves_Progress(bool donotAdvanceRound = false,
 	int length = Rounds[WaveWhich].Length-1;
 	bool panzer_spawn = false;
 	bool panzer_sound = false;
-	bool subgame = (Rogue_Mode() || Construction_Mode() || Dungeon_Mode());
+	bool subgame = (Rogue_Mode() || Construction_Mode() || Dungeon_Mode() || Arena_Mode());
 	static int panzer_chance;
 	bool GiveAmmoSupplies = !Dungeon_Mode();
 
@@ -3362,6 +3388,9 @@ void Waves_ClearWaveCurrentSpawningEnemies(int WaveWhich = Rounds_Default)
 
 bool Waves_Started()
 {
+	if(Arena_Mode())
+		return Arena_Started();
+	
 	if(Dungeon_Mode())
 		return Dungeon_Started();
 	
@@ -3390,6 +3419,9 @@ int Waves_GetRoundScale()
 	
 	if(BetWar_Mode())
 		return 1;
+	
+	if(Arena_Mode())
+		return Arena_GetRound();
 
 	if(Waves_InFreeplay())
 	{
@@ -3518,6 +3550,9 @@ void Zombie_Delay_Warning()
 	if(!Waves_Started() || InSetup || Classic_Mode() || Construction_InSetup() || Dungeon_InSetup())
 		return;
 
+	if(Arena_Mode() && Arena_CanRespawn())
+		return;
+
 	switch(i_ZombieAntiDelaySpeedUp)
 	{
 		case 0:
@@ -3530,7 +3565,7 @@ void Zombie_Delay_Warning()
 		}
 		case 1:
 		{
-			if(f_ZombieAntiDelaySpeedUp + 15.0 < GetGameTime())
+			if(f_ZombieAntiDelaySpeedUp + (Arena_Mode() ? 5.0 : 15.0) < GetGameTime())
 			{
 				i_ZombieAntiDelaySpeedUp = 2;
 				CPrintToChatAll("{crimson}Enemies grow annoyed and go faster...");
@@ -3538,7 +3573,7 @@ void Zombie_Delay_Warning()
 		}
 		case 2:
 		{
-			if(f_ZombieAntiDelaySpeedUp + 35.0 < GetGameTime())
+			if(f_ZombieAntiDelaySpeedUp + (Arena_Mode() ? 10.0 : 35.0) < GetGameTime())
 			{
 				i_ZombieAntiDelaySpeedUp = 3;
 				CPrintToChatAll("{crimson}Enemies grow furious and become even faster...");
@@ -3546,7 +3581,7 @@ void Zombie_Delay_Warning()
 		}
 		case 3:
 		{
-			if(f_ZombieAntiDelaySpeedUp + 55.0 < GetGameTime())
+			if(f_ZombieAntiDelaySpeedUp + (Arena_Mode() ? 15.0 : 55.0) < GetGameTime())
 			{
 				i_ZombieAntiDelaySpeedUp = 4;
 				CPrintToChatAll("{crimson}Enemies become pissed off and gain super speed...");
@@ -3554,7 +3589,7 @@ void Zombie_Delay_Warning()
 		}
 		case 4:
 		{
-			if(f_ZombieAntiDelaySpeedUp + 75.0 < GetGameTime())
+			if(f_ZombieAntiDelaySpeedUp + (Arena_Mode() ? 20.0 : 75.0) < GetGameTime())
 			{
 				i_ZombieAntiDelaySpeedUp = 5;
 				CPrintToChatAll("{crimson}Enemies become infuriated and will reach you...");
@@ -3562,7 +3597,7 @@ void Zombie_Delay_Warning()
 		}
 		case 5:
 		{
-			if(f_ZombieAntiDelaySpeedUp + 100.0 < GetGameTime())
+			if(f_ZombieAntiDelaySpeedUp + (Arena_Mode() ? 30.0 : 100.0) < GetGameTime())
 			{
 				i_ZombieAntiDelaySpeedUp = 6;
 				CPrintToChatAll("{crimson}Die.");
@@ -3572,12 +3607,18 @@ void Zombie_Delay_Warning()
 				
 				if(Dungeon_Mode())
 					Dungeon_AntiStalled();
+				
+				if(Arena_Mode())
+					Arena_AntiStalled();
 			}
 		}
 		case 6:
 		{
 			if(f_ZombieAntiDelaySpeedUp + 400.0 < GetGameTime())
 			{
+				if(Arena_Mode())
+					ForcePlayerLoss(false);
+				
 				i_ZombieAntiDelaySpeedUp = 7;
 				CPrintToChatAll("{crimson}You are probably abusing something, perish, go my uber swordsmen.");
 				if(!Rogue_Mode())
@@ -4276,7 +4317,7 @@ void Waves_SetReadyStatus(int status, bool stopmusic = true)
 			InSetup = false;
 			GameRules_SetProp("m_bInWaitingForPlayers", false);
 			GameRules_SetProp("m_bInSetup", false);
-			GameRules_SetProp("m_iRoundState", RoundState_ZombieRiot);
+			GameRules_SetProp("m_iRoundState", (Arena_Mode() && Arena_CanRespawn()) ? RoundState_RoundRunning : RoundState_ZombieRiot);
 			//stop music once game starts.
 			for(int client=1; client<=MaxClients; client++)
 			{
@@ -4301,10 +4342,12 @@ void Waves_SetReadyStatus(int status, bool stopmusic = true)
 			if(objective != -1)
 				SetEntProp(objective, Prop_Send, "m_bMannVsMachineBetweenWaves", true);
 			
-			SDKCall_ResetPlayerAndTeamReadyState();
-
-			if(!ReadyUpTimer)
-				ReadyUpTimer = CreateTimer(0.2, ReadyUpHack, _, TIMER_REPEAT);
+			if(!Arena_Mode())
+			{
+				SDKCall_ResetPlayerAndTeamReadyState();
+				if(!ReadyUpTimer)
+					ReadyUpTimer = CreateTimer(0.2, ReadyUpHack, _, TIMER_REPEAT);
+			}
 
 			if(!AlreadySetWaiting && !Rogue_Mode())
 			{
@@ -4353,6 +4396,9 @@ void Waves_SetReadyStatus(int status, bool stopmusic = true)
 			ReadyUpTimer = null;
 		}
 	}
+
+	if(Arena_Mode())
+		Arena_SetReadyStatus(status);
 }
 
 static void WaveSizeLimit(int objective, int &asize1 = 0, int &asize2 = 0, int &aname1 = 0, int &aname2 = 0)
@@ -4510,7 +4556,7 @@ void Waves_AllySpawned(int entity)
 
 void Waves_EnemySpawned(int entity)
 {
-	if(ModFuncEnemy != INVALID_FUNCTION)
+	if(ModFuncEnemy != INVALID_FUNCTION && !IsNTEntity(entity))
 	{
 		Call_StartFunction(null, ModFuncEnemy);
 		Call_PushCell(entity);
@@ -4563,15 +4609,15 @@ bool Waves_NextFreeplayCall(bool donotAdvanceRound)
 
 		for(int i; i < Max_Enemy_Get; i++)
 		{
-			int dangerlevel = Freeplay_GetDangerLevelCurrent();
+			int dangerlevel = Freeplay_GetDangerLevelCurrent(postWaves);
 			bool isBoss = !(GetURandomInt() % 9);
 
 			if(isBoss)
 			{
 				int bossdanger = dangerlevel;
 				
-				if(bossdanger >= 5)
-					bossdanger = 4;
+				if(bossdanger >= 7)
+					bossdanger = 6;
 
 				int index = boss.FindValue(bossdanger, Wave::DangerLevel);
 				if(index == -1)
@@ -4826,6 +4872,8 @@ void Waves_TrySpawnBarney()
 	if(NoBarneySpawn)
 		return;
 	if(BetWar_Mode())
+		return;
+	if(Arena_Mode())
 		return;
 		
 	//check for barney.

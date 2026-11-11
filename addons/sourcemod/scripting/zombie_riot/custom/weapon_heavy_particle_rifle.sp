@@ -1,7 +1,6 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-static float f_AniSoundSpam[MAXPLAYERS];
 static int i_shotsfired[MAXPLAYERS];
 static float f_rest_time[MAXPLAYERS];
 static float f_hud_timer[MAXPLAYERS];
@@ -25,7 +24,6 @@ static const char Spark_Sound[][] = {
 void Heavy_Particle_Rifle_Mapstart()
 {
 	Zero(f_rest_time);
-	Zero(f_AniSoundSpam);
 	Zero(f_hud_timer);
 	Zero(b_fullcharge_sound);
 	PrecacheSound(HEAVY_PARTICLE_RIFLE_SHIELD_SOUND1, true);

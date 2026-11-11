@@ -91,7 +91,7 @@ public void Enable_KitOmega(int client, int weapon)
 			h_KitOmega_Timer[client] = null;
 			DataPack pack = new DataPack();
 			
-			h_KitOmega_Timer[client] = CreateDataTimer(0.1, Timer_KitOmega, pack, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			h_KitOmega_Timer[client] = CreateDataTimer(0.1, Timer_KitOmega, pack, TIMER_REPEAT);
 			pack.WriteCell(client);
 			pack.WriteCell(EntIndexToEntRef(weapon));
 			i_KitOmega_MeleeRef[client] = EntIndexToEntRef(weapon);
@@ -105,7 +105,7 @@ public void Enable_KitOmega(int client, int weapon)
 			b_KitOmega_Toggle[client] = false;
 			DataPack pack = new DataPack();
 			
-			h_KitOmega_Timer[client] = CreateDataTimer(0.1, Timer_KitOmega, pack, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+			h_KitOmega_Timer[client] = CreateDataTimer(0.1, Timer_KitOmega, pack, TIMER_REPEAT);
 			pack.WriteCell(client);
 			pack.WriteCell(EntIndexToEntRef(weapon));
 			i_KitOmega_MeleeRef[client] = EntIndexToEntRef(weapon);
@@ -384,6 +384,9 @@ public void KitOmega_AddCharge(int client, float amount)
 	if(!amount)
 		return;
 
+	if(Arena_Mode() && amount > 0.0)
+		amount *= 6.0;
+		
 	OMEGA_ENERGY[client] += amount;
 
 	if(OMEGA_ENERGY[client] < 0.0)

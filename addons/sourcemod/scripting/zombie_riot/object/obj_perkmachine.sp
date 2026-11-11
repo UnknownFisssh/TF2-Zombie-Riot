@@ -110,6 +110,11 @@ static bool ClotInteract(int client, int weapon, ObjectPerkMachine npc)
 		IntToString(i, data, sizeof(data));
 		menu2.AddItem(data, buffer);
 	}
+
+	//PERK_SYMBIOSOS_SHOT
+	FormatEx(buffer, sizeof(buffer), "%t", PerkNames[18]);
+	IntToString(18, data, sizeof(data));
+	menu2.AddItem(data, buffer);
 						
 	menu2.Pagination = 0;
 	menu2.ExitButton = true;
@@ -129,7 +134,7 @@ static int Building_ConfirmMountedAction(Menu menu, MenuAction action, int clien
 		case MenuAction_Cancel:
 		{
 			if(IsValidClient(client))
-				AnyMenuOpen[client] = 0.0;
+				AnyMenuOpen[client] = 0;
 		}
 		case MenuAction_Select:
 		{
@@ -160,12 +165,16 @@ void Do_Perk_Machine_Logic(int owner, int client, int entity, int what_perk, int
 	ObjectGeneric objstats = view_as<ObjectGeneric>(entity);
 	if(owner == -1 && !objstats.m_bNoOwnerRequired)
 		return;
-		
+
 	if(!IsVscriptCall && (GetEntityFlags(client) & FL_DUCKING))
 	{
 		CPrintToChat(client, "{green} %T", PerkNames_Received[PrintChatid], client);
 		ObjectPerkMachine npc = view_as<ObjectPerkMachine>(entity);
 		ClotInteract(client, -1, npc);
+		return;
+	}
+	if(!IsEntityAlive(client))
+	{
 		return;
 	}
 

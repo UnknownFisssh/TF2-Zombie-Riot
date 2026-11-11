@@ -176,6 +176,8 @@ int AmmoboxUsed(int client, int entity)
 			if(Current_Mana[client] < RoundToCeil(max_mana[client] * 2.0))
 			{
 				Ammo_Count_Used[client] += 2;
+				if(ZR_Get_Modifier() == 8)
+					Ammo_Count_Used[client] += 2;
 				ClientCommand(client, "playgamesound items/ammo_pickup.wav");
 				ClientCommand(client, "playgamesound items/ammo_pickup.wav");
 				if(Current_Mana[client] < RoundToCeil(max_mana[client] * 2.0))
@@ -186,9 +188,8 @@ int AmmoboxUsed(int client, int entity)
 						Current_Mana[client] = RoundToCeil(max_mana[client] * 2.0);
 				}
 
-				ApplyBuildingCollectCooldown(entity, client, 5.0, true);
-				if(Dungeon_Mode())
-					ApplyBuildingCollectCooldown(entity, client, 2.5, true);
+				float CDForUsing = 15.0;
+				ApplyBuildingCollectCooldown(entity, client, CDForUsing, true);
 				Mana_Hud_Delay[client] = 0.0;
 				return 2;
 			}
@@ -210,6 +211,8 @@ int AmmoboxUsed(int client, int entity)
 				ClientCommand(client, "playgamesound items/ammo_pickup.wav");
 				AddAmmoClient(client, i_WeaponAmmoAdjustable[weapon] ,_,2.0);
 				Ammo_Count_Used[client] += 1;
+				if(ZR_Get_Modifier() == 8)
+					Ammo_Count_Used[client] += 1;
 				for(int i; i<Ammo_MAX; i++)
 				{
 					CurrentAmmo[client][i] = GetAmmo(client, i);
@@ -225,6 +228,8 @@ int AmmoboxUsed(int client, int entity)
 				ClientCommand(client, "playgamesound items/ammo_pickup.wav");
 				AddAmmoClient(client, 23 ,_,2.0);
 				Ammo_Count_Used[client] += 1;
+				if(ZR_Get_Modifier() == 8)
+					Ammo_Count_Used[client] += 1;
 				for(int i; i<Ammo_MAX; i++)
 				{
 					CurrentAmmo[client][i] = GetAmmo(client, i);
@@ -240,6 +245,8 @@ int AmmoboxUsed(int client, int entity)
 				ClientCommand(client, "playgamesound items/ammo_pickup.wav");
 				AddAmmoClient(client, Ammo_type ,_,2.0);
 				Ammo_Count_Used[client] += 1;
+				if(ZR_Get_Modifier() == 8 && Ammo_type != Ammo_Metal)
+					Ammo_Count_Used[client] += 1;
 				for(int i; i<Ammo_MAX; i++)
 				{
 					CurrentAmmo[client][i] = GetAmmo(client, i);
@@ -252,7 +259,7 @@ int AmmoboxUsed(int client, int entity)
 			else
 			{
 				//not useable if they have armor, or no armor, useable if they are under corrosion
-				if(f_LivingArmorPenalty[client] > GetGameTime() || (Attributes_Get(client, Attrib_Armor_AliveMode, 0.0) != 0.0 && Armor_Charge[client] >= 0))
+				if(f_LivingArmorPenalty[client] > GetGameTime()/* || (Attributes_Get(client, Attrib_Armor_AliveMode, 0.0) != 0.0 && Armor_Charge[client] >= 0)*/)
 				{
 					ClientCommand(client, "playgamesound items/medshotno1.wav");
 					return false;
@@ -268,6 +275,8 @@ int AmmoboxUsed(int client, int entity)
 					if(Dungeon_Mode())
 						ApplyBuildingCollectCooldown(entity, client, 2.5, true);
 					Ammo_Count_Used[client] += 1;
+					if(ZR_Get_Modifier() == 8)
+						Ammo_Count_Used[client] += 1;
 					
 					ClientCommand(client, "playgamesound ambient/machines/machine1_hit2.wav");
 					return true;

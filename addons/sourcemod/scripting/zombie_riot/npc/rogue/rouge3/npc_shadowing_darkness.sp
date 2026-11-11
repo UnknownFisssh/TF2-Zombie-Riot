@@ -434,6 +434,7 @@ methodmap Shadowing_Darkness_Boss < CClotBody
 		else
 		{
 			npc.SetActivity("ACT_SHADOW_RUN");
+			f_khamlCutscene = 0.0;
 			RaidModeTime = GetGameTime() + (350.0);
 			MusicEnum music;
 			strcopy(music.Path, sizeof(music.Path), "#zombiesurvival/rogue3/shadowing_darkness.mp3");
@@ -740,7 +741,7 @@ public Action Shadowing_Darkness_Boss_OnTakeDamage(int victim, int &attacker, in
 			f_AttackSpeedNpcIncrease[spawn_index]	*= 2.0;
 			fl_Extra_Damage[spawn_index]	*= 0.1;
 			b_thisNpcIsABoss[spawn_index] = true;
-
+			b_DoNotUnStuck[spawn_index] = true;	
 		}
 		if(npc.m_iChanged_WalkCycle != 99) 	
 		{

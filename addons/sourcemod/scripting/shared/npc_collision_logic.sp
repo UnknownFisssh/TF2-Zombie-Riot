@@ -46,7 +46,7 @@ bool ShouldCollide_NpcLoco_Internal(int bot_entidx, int otherindex, int extrarul
 		if(b_CantCollidieAlly[otherindex])
 			return false;
 	}	
-	if(b_ThisEntityIgnoredByOtherNpcsAggro[otherindex])
+	if(b_ThisEntityIgnoredByOtherNpcsAggro[otherindex] && !Arena_Mode())
 	{
 		if(GetTeam(otherindex) == TFTeam_Stalkers && GetTeam(bot_entidx) != TFTeam_Red)
 		{
@@ -62,6 +62,10 @@ bool ShouldCollide_NpcLoco_Internal(int bot_entidx, int otherindex, int extrarul
 		}
 		if(i_IsABuilding[otherindex])
 		{
+			if(ZR_Get_Modifier() == KITERS_DREAM)
+			{
+				return false;
+			}
 			if(GetTeam(bot_entidx) != TFTeam_Red && IsEntityTowerDefense(bot_entidx))
 			{
 				if(RaidbossIgnoreBuildingsLogic(2) || b_NpcIgnoresbuildings[bot_entidx])
@@ -117,6 +121,10 @@ bool ShouldCollide_NpcLoco_Internal(int bot_entidx, int otherindex, int extrarul
 	}
 	if(i_IsABuilding[otherindex])
 	{
+		if(ZR_Get_Modifier() == KITERS_DREAM)
+		{
+			return false;
+		}
 		if(RaidbossIgnoreBuildingsLogic(2) || b_NpcIgnoresbuildings[bot_entidx])
 		{
 			return false;

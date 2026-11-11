@@ -9,8 +9,6 @@ static float Ark_ParryTiming[MAXPLAYERS+1];
 
 static int Ark_Level[MAXPLAYERS+1]={0, ...};
 
-static float f_AniSoundSpam[MAXPLAYERS+1]={0.0, ...};
-
 
 #define SOUND_QUIBAI_SHOT 	"weapons/stunstick/alyx_stunner2.wav"
 #define SOUND_LAPPLAND_SHOT 	"weapons/fx/nearmiss/dragons_fury_nearmiss.wav"
@@ -52,7 +50,6 @@ void Ark_autoaim_Map_Precache()
 	PrecacheSound(SOUND_LAPPLAND_ABILITY);
 	PrecacheSound("weapons/bombinomicon_explode1.wav");
 	PrecacheSound("weapons/tf2_back_scatter.wav");
-	Zero(f_AniSoundSpam);
 	Zero(h_TimerLappLandManagement);
 	Zero(i_LappLandHitsDone);
 	Zero(f_LappLandAbilityActive);
@@ -414,9 +411,8 @@ void Ark_Lauch_projectile(int client, int weapon, bool multi, float speed, float
 		Wand_Projectile_Spawn(client, speed, time, damage, 15/*ark*/, weapon, Particle);
 	}
 }
-public Action Event_Ark_OnHatTouch(int entity, int other)// code responsible for doing damage to the enemy
+public Action Event_Ark_OnHatTouch(int entity, int target)// code responsible for doing damage to the enemy
 {
-	int target = Target_Hit_Wand_Detection(entity, other);
 	if (target > 0)	
 	{
 		int particle = EntRefToEntIndex(i_WandParticle[entity]);
@@ -433,7 +429,7 @@ public Action Event_Ark_OnHatTouch(int entity, int other)// code responsible for
 		int weapon = EntRefToEntIndex(i_WandWeapon[entity]);
 
 		float Dmg_Force[3]; CalculateDamageForce(vecForward, 10000.0, Dmg_Force);
-		SDKHooks_TakeDamage(other, owner, owner, f_WandDamage[entity], DMG_PLASMA, weapon, Dmg_Force, Entity_Position);	// 2048 is DMG_NOGIB?
+		SDKHooks_TakeDamage(target, owner, owner, f_WandDamage[entity], DMG_PLASMA, weapon, Dmg_Force, Entity_Position);	// 2048 is DMG_NOGIB?
 		if(IsValidEntity(particle) && particle != 0)
 		{
 			RemoveEntity(particle);
@@ -464,7 +460,7 @@ public float Player_OnTakeDamage_Ark(int victim, float &damage, int attacker, in
 			float damage_reflected = damage;
 			if(Ark_AlreadyParried[victim] == 0 && Ark_Level[victim] == 3)
 			{
-				if(damage_reflected >= 500.0)
+				if(damage_reflected >= 500.0 && !Arena_Mode())
 				{
 					damage_reflected = 500.0;
 					//ClientCommand(victim, "playgamesound weapons/tf2_back_scatter.wav");
@@ -475,7 +471,7 @@ public float Player_OnTakeDamage_Ark(int victim, float &damage, int attacker, in
 			}
 			else
 			{
-				if(damage_reflected >= 300.0)
+				if(damage_reflected >= 300.0 && !Arena_Mode())
 				{
 					damage_reflected = 300.0;
 				}
@@ -521,7 +517,8 @@ public float Player_OnTakeDamage_Ark(int victim, float &damage, int attacker, in
 				}
 				Ark_Hits[victim] += 1;	
 			}
-			
+			if(Arena_Mode())
+				damage_reflected *= 0.5;
 			if(f_AniSoundSpam[victim] < GetGameTime())
 			{
 				f_AniSoundSpam[victim] = GetGameTime() + 0.2;
@@ -678,7 +675,7 @@ public void Arkoftheelements_Explosion(int client, int weapon, bool crit, int sl
 
 			//Explode_Logic_Custom(damage, client, client, weapon, fPos, Explosion radious, _, _, _, 15);
 			Explode_Logic_Custom(damage, client, client, weapon, _, 500.0, _, _, false, 15);
-			FinishLagCompensation_Base_boss();
+			FinishLagCompensation_Base_boss(.client = client);
 
 			//float EnemyPos[3];
 			float UserLoc[3];

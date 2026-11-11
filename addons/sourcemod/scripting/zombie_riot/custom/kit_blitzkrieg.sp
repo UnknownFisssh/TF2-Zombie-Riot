@@ -322,7 +322,11 @@ public void Blitzkrieg_Kit_Primary_Reload(int client, int weapon, bool crit, int
 /*
 	if(LastMann)
 		time /=4.0;
-*/
+*/	
+	if(Arena_Mode())
+	{
+		time *= 0.35;
+	}
 	fl_primary_reloading[client] = GameTime + time;
 
 	//8 is rockets ammo
@@ -468,7 +472,7 @@ static void Blitzkrieg_Kit_Rocket(int client, int weapon, float efficiency, int 
 			b_LagCompNPC_No_Layers = true;
 			StartLagCompensation_Base_Boss(client);
 			DoSwingTrace_Custom(swingTrace, client, vecSwingForward, 9999.9, false, 45.0, false); //infinite range, and (doesn't)ignore walls!	
-			FinishLagCompensation_Base_boss();
+			FinishLagCompensation_Base_boss(.client = client);
 
 			int target = TR_GetEntityIndex(swingTrace);	
 			if(IsValidEnemy(client, target))
@@ -558,19 +562,6 @@ static void Blitzkrieg_Kit_Rocket_Fire(int client, float speed, float damage, in
 	ApplyCustomModelToWandProjectile(projectile, BLITZKRIEG_KIT_ROCKET_MODEL, 1.0, "", _ , true);
 }
 
-public Action TransmitToOwnerOnly(int entity, int client)
-{
-	if(client > 0 && client <= MaxClients)
-	{
-		int owner = EntRefToEntIndex(i_OwnerEntityEnvLaser[entity]);
-		if(owner == client)
-		{
-			return Plugin_Continue;
-		}
-	}
-	return Plugin_Stop;
-}
-
 public void Blitzkrieg_Kit_Rocket_StartTouch(int entity, int target)
 {
 	if (target > 0)	
@@ -595,6 +586,8 @@ public void Blitzkrieg_Kit_Rocket_StartTouch(int entity, int target)
 
 		if(IsValidClient(owner))
 		{
+			if(Arena_Mode())
+				fl_ion_gain_multi[owner] *= 5.0;
 			fl_ion_charge[owner]+=fl_ion_gain_multi[owner];
 
 			if(BLITZKRIEG_KIT_MAX_ION_CHARGES <= fl_ion_charge[owner])
@@ -730,7 +723,7 @@ static void Blitzkrieg_Kit_ion_trace(int client, int patern, int weapon)
 		Blitzkrieg_Kit_IOC_Invoke(client, vEnd, damage);
 	}
 	delete trace;
-	FinishLagCompensation_Base_boss();
+	FinishLagCompensation_Base_boss(.client = client);
 }
 
 static int i_colour[MAXPLAYERS+1][4];
@@ -898,7 +891,7 @@ void Blitzkrieg_Kit_OnHitEffect(int client, int target)
 		else
 		*/
 		{
-			if (b_thisNpcIsARaid[target])	//during raids make the CD reduction higher
+			if (b_thisNpcIsARaid[target] || Arena_Mode())	//during raids make the CD reduction higher
 			{
 				fl_ion_timer_recharge[client] -=BLITZKRIEG_KIT_RELOAD_COOLDOWN_REDUCTION*4.0;
 				fl_primary_reloading[client] -= BLITZKRIEG_KIT_RELOAD_COOLDOWN_REDUCTION*4.0;	//Reduce the cooldowns by a bit if you hit something!

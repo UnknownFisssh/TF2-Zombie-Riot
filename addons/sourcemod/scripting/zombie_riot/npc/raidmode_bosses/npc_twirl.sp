@@ -3718,7 +3718,7 @@ static void IonPillarRadiusIndicator(float Loc[3], float radius, int color[4])
 {
 	float offset_radius = radius * 4.0;
 	float dist_Check = (offset_radius * offset_radius);
-	for(int i=1 ; i < MaxClients ; i++)
+	for(int i=1 ; i <= MaxClients ; i++)
 	{
 		if(!IsValidClient(i) || !IsClientInGame(i))
 			continue;
@@ -4143,7 +4143,8 @@ static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 			ApplyStatusEffect(npc.index, npc.index, "Solid Stance", 999999.0);	
 			ApplyStatusEffect(npc.index, npc.index, "Fluid Movement", 999999.0);	
 
-			ReviveAll(true);
+			// never do ReviveAll within a damage hook
+			ReviveAll_Delayed(true);
 
 			npc.m_flSpeed = 0.0;
 			f_NpcTurnPenalty[npc.index] = 0.0;

@@ -130,6 +130,9 @@ methodmap VestaHarbringer < CClotBody
 
 	public VestaHarbringer(float vecPos[3], float vecAng[3], int ally, const char[] data)
 	{
+		if(StrContains(data, "icononly") != -1)
+			return view_as<VestaHarbringer>(-1);
+		
 		VestaHarbringer npc = view_as<VestaHarbringer>(CClotBody(vecPos, vecAng, "models/player/soldier.mdl", "1.1", "1000", ally));
 		
 		i_NpcWeight[npc.index] = 1;
@@ -148,6 +151,7 @@ methodmap VestaHarbringer < CClotBody
 		npc.m_iNpcStepVariation = STEPTYPE_NORMAL;
 		
 		b_TheGoons=false;
+		/*
 		if(StrContains(data, "icononly") != -1)
 		{
 			func_NPCDeath[npc.index] = INVALID_FUNCTION;
@@ -161,7 +165,7 @@ methodmap VestaHarbringer < CClotBody
 			SmiteNpcToDeath(npc.index);
 			return npc;
 		}
-		
+		*/
 		if(StrContains(data, "the_goons") != -1)
 			b_TheGoons=true;
 		else if(StrContains(data, "birdeye"))
@@ -171,10 +175,10 @@ methodmap VestaHarbringer < CClotBody
 			//The NPC name will be displayed normally only after 1 frame.
 			switch(GetRandomInt(0, 3))
 			{
-				case 0:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_01-1", false, true);
-				case 1:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_01-2", false, true);
-				case 2:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_01-3", false, true);
-				case 3:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_01-4", false, true);
+				case 0:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_01-1");
+				case 1:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_01-2");
+				case 2:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_01-3");
+				case 3:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_01-4");
 			}
 		}
 		
@@ -223,6 +227,11 @@ methodmap VestaHarbringer < CClotBody
 		}
 		return npc;
 	}
+}
+
+void VestaHarbringer_NPCTalkMessage(int entity, const char[] message)
+{
+	PrintNPCMessageWithPrefixes(entity, "sienna", message, true);
 }
 
 static void VestaHarbringer_ClotThink(int iNPC)
@@ -284,9 +293,9 @@ static void VestaHarbringer_ClotThink(int iNPC)
 	{
 		switch(GetRandomInt(0, 2))
 		{
-			case 0:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_02-1", false, false);
-			case 1:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_02-2", false, false);
-			case 2:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_02-3", false, false);
+			case 0:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_02-1");
+			case 1:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_02-2");
+			case 2:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_02-3");
 		}
 		npc.m_iBirdEye=-1;
 	}
@@ -295,9 +304,9 @@ static void VestaHarbringer_ClotThink(int iNPC)
 	{
 		switch(GetRandomInt(0, 2))
 		{
-			case 0:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_03-1", false, false);
-			case 1:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_03-2", false, false);
-			case 2:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_03-3", false, false);
+			case 0:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_03-1");
+			case 1:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_03-2");
+			case 2:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_03-3");
 		}
 		npc.m_iBigPipe=-1;
 	}
@@ -405,8 +414,8 @@ static void VestaHarbringerSelfDefense(VestaHarbringer npc, float gameTime)
 		npc.m_flArmorGrenade = gameTime+32.0;
 		switch(GetRandomInt(0, 1))
 		{
-			case 0:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_05-1", false, false);
-			case 1:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_05-2", false, false);
+			case 0:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_05-1");
+			case 1:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_05-2");
 		}
 		
 		int entity = CreateEntityByName("tf_projectile_pipe_remote");
@@ -459,8 +468,8 @@ static void VestaHarbringerSelfDefense(VestaHarbringer npc, float gameTime)
 		npc.m_flFlashGrenade = gameTime+22.0;
 		switch(GetRandomInt(0, 1))
 		{
-			case 0:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_06-1", false, false);
-			case 1:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_06-2", false, false);
+			case 0:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_06-1");
+			case 1:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_06-2");
 		}
 		
 		int entity = CreateEntityByName("tf_projectile_pipe");
@@ -565,10 +574,10 @@ static void VestaHarbringerSelfDefense(VestaHarbringer npc, float gameTime)
 							{
 								switch(GetRandomInt(0, 3))
 								{
-									case 0:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_04-1", false, false);
-									case 1:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_04-2", false, false);
-									case 2:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_04-3", false, false);
-									case 3:NPCPritToChat(npc.index, "{sienna}", "harbringer_Talk_04-4", false, false);
+									case 0:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_04-1");
+									case 1:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_04-2");
+									case 2:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_04-3");
+									case 3:VestaHarbringer_NPCTalkMessage(npc.index, "harbringer_Talk_04-4");
 								}
 							}
 							else if(b_TheGoons)

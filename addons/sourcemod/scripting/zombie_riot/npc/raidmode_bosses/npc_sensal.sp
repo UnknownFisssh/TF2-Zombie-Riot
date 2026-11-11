@@ -803,7 +803,8 @@ static Action Internal_OnTakeDamage(int victim, int &attacker, int &inflictor, f
 		{
 			b_ThisEntityIgnoredByOtherNpcsAggro[npc.index] = true; //Make allied npcs ignore him.
 
-			ReviveAll(true);
+			// never do ReviveAll within a damage hook
+			ReviveAll_Delayed(true);
 
 			b_angered_twice[npc.index] = true; 
 			i_SaidLineAlready[npc.index] = 0; 
@@ -815,6 +816,8 @@ static Action Internal_OnTakeDamage(int victim, int &attacker, int &inflictor, f
 			GiveProgressDelay(20.0);
 			
 			NPCTalkMessage(npc.index, "You keep talking about Silvester and Waldch, what is the meaning of this?");
+			
+			Sensal_Cleanup(npc.index);
 
 			damage = 0.0; //So he doesnt get oneshot somehow, atleast once.
 			return Plugin_Handled;
@@ -842,7 +845,8 @@ static void Internal_NPCDeath(int entity)
 	npc.PlayDeathSound();	
 
 	RaidBossActive = INVALID_ENT_REFERENCE;
-		
+	
+	Sensal_Cleanup(npc.index);
 	
 	if(IsValidEntity(npc.m_iWearable8))
 		RemoveEntity(npc.m_iWearable8);
@@ -2381,4 +2385,18 @@ bool Target_CrystalFalse(int entity, int target)
 		return false;
 	}
 	return true;
+}
+
+static void Sensal_Cleanup(int entity)
+{
+	for (int i = 1; i < MAXENTITIES; i++)
+	{
+		if (!IsValidEntity(i) || !b_IsAProjectile[i])
+			continue;
+		
+		if (GetEntPropEnt(i, Prop_Send, "m_hOwnerEntity") != entity)
+			continue;
+		
+		RemoveEntity(i);
+	}
 }

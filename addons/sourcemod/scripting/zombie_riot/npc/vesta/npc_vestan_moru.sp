@@ -256,13 +256,14 @@ static void VestanDroneAnvil_ClotThink(int iNPC)
 	}
 	else
 	{
-		npc.m_flSpeed = NpcStats_VestanCallToArms(npc.index) ? 400.0 : 300.0;
+		npc.m_flSpeed = NpcStats_VestanCallToArms(npc.index) ? 550.0 : 300.0;
 	}
 
 	if(npc.m_flNextThinkTime > gameTime)
 		return;
 	if((npc.m_flLifeTime>0.0 && npc.m_flAttackHappens_bullshit && gameTime > npc.m_flAttackHappens_bullshit)
-	||((npc.m_flLifeTime!=-1.0 && !npc.m_bFUCKYOU_move_anim) && !IsValidAlly(npc.index, GetClosestAlly(npc.index))))
+	||((npc.m_flLifeTime!=-1.0 && !npc.m_bFUCKYOU_move_anim) && !IsValidAlly(npc.index, GetClosestAlly(npc.index)))
+	||(npc.m_bFUCKYOU_move_anim && !IsValidEntity(RaidBossActive)))
 	{
 		b_NpcForcepowerupspawn[npc.index] = 0;
 		i_RaidGrantExtra[npc.index] = 0;

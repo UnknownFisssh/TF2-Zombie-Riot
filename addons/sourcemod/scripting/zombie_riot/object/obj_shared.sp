@@ -29,7 +29,6 @@ static Function FuncCanBuild[MAXENTITIES];
 //static Function FuncShowInteractHud[MAXENTITIES];
 
 static int Building_Max_Health[MAXENTITIES]={0, ...};
-static bool CanUseBuilding[MAXENTITIES][MAXPLAYERS];
 int i_MachineJustClickedOn[MAXPLAYERS];
 static float RotateByDefault[MAXENTITIES]={0.0, ...};
 int Building_BuildingBeingCarried[MAXENTITIES];
@@ -669,13 +668,14 @@ public bool ObjectGeneric_CanBuildSentryBarracks(int client, int &count, int &ma
 	if(!client)
 		return false;
 		
-	return ObjectGeneric_CanBuildSentryInternal(client, count, maxcount);
+	count = Object_GetSentryBuilding(client) == -1 ? 0 : 1;
+	maxcount = IsBarracks(client) ? 1 : 0;
+
+	return (!count && maxcount);
 }
 public bool ObjectGeneric_CanBuildSentry(int client, int &count, int &maxcount)
 {
 	if(!client)
-		return false;
-	if(i_NormalBarracks_HexBarracksUpgrades_2[client] & ZR_BARRACKS_TROOP_CLASSES)
 		return false;
 	if(f_VintulumBombRecentlyUsed[client] > GetGameTime())
 		return false;
@@ -686,7 +686,7 @@ public bool ObjectGeneric_CanBuildSentry(int client, int &count, int &maxcount)
 bool ObjectGeneric_CanBuildSentryInternal(int client, int &count, int &maxcount)
 {
 	count = Object_GetSentryBuilding(client) == -1 ? 0 : 1;
-	maxcount = (Blacksmith_IsASmith(client) || Merchant_IsAMerchant(client)) ? 0 : 1;
+	maxcount = (Blacksmith_IsASmith(client) || Merchant_IsAMerchant(client) || IsBarracks(client)) ? 0 : 1;
 
 	return (!count && maxcount);
 }
@@ -724,14 +724,15 @@ static bool ObjectGeneric_ClotThink(ObjectGeneric objstats)
 		Call_Finish();
 	}
 
+	int owner = GetEntPropEnt(objstats.index, Prop_Send, "m_hOwnerEntity");
 	//force think much slower during peace times
-	if(Dungeon_Mode() && Dungeon_InSetup() && objstats.m_bConstructBuilding && GetTeam(objstats.index) == TFTeam_Red)
+	if(Dungeon_Mode() && Dungeon_InSetup() && objstats.m_bConstructBuilding && IsPlayerSideBuilding(objstats.index, owner))
 	{
 		if(IsDungeonCenterId() != i_NpcInternalId[objstats.index])
 			objstats.m_flNextDelayTime = gameTime + 5.0;
 	}
 
-	if(GetTeam(objstats.index) != TFTeam_Red)
+	if(!IsPlayerSideBuilding(objstats.index, owner))
 		return false;
 
 	BuildingUpdateTextHud(objstats.index);
@@ -756,7 +757,6 @@ static bool ObjectGeneric_ClotThink(ObjectGeneric objstats)
 			objstats.m_bBurning = false;
 		}
 	}
-	int owner = GetEntPropEnt(objstats.index, Prop_Send, "m_hOwnerEntity");
 	if(owner == -1 && !objstats.m_bConstructBuilding && !objstats.m_bNoOwnerRequired)
 	{                                               
 		//give 30 sec untill it destroys itself
@@ -844,6 +844,11 @@ static bool ObjectGeneric_ClotThink(ObjectGeneric objstats)
 			}
 			
 			int r = 255 - g;
+			if(ZR_Get_Modifier() == KITERS_DREAM)
+			{
+				r = 0;
+				g = 0;
+			}
 			
 			int wearable = objstats.m_iWearable1;
 			if(wearable != -1)
@@ -932,6 +937,13 @@ bool Object_Interact(int client, int weapon, int obj)
 		MountedObjectInteracted = true;
 	}
 
+	if(EntityOnAllyInteract[client] && EntityOnAllyInteract[client] != INVALID_FUNCTION)
+	{
+		Call_StartFunction(null, EntityOnAllyInteract[client]);
+		Call_PushCell(client);
+		Call_PushCell(obj);
+		Call_Finish();
+	}
 	Function func = func_NPCInteract[entity];
 	if((!func || func == INVALID_FUNCTION) && GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") != -1)
 		return false;
@@ -1008,10 +1020,11 @@ int Object_NamedBuildings(int owner = 0, const char[] name)
 	int entity = -1;
 	while((entity=FindEntityByClassname(entity, "obj_building")) != -1)
 	{
-		if(GetTeam(entity) != TFTeam_Red)
+		int BuildingOwner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+		if(!IsPlayerSideBuilding(entity, BuildingOwner))
 			continue;
 		
-		if(owner == 0 || GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == owner)
+		if(owner == 0 || BuildingOwner == owner)
 		{
 			static char plugin[64];
 			NPC_GetPluginById(i_NpcInternalId[entity], plugin, sizeof(plugin));
@@ -1030,7 +1043,8 @@ int Object_SupportBuildings(int owner, int &all = 0)
 	int entity = -1;
 	while((entity=FindEntityByClassname(entity, "obj_building")) != -1)
 	{
-		if(GetTeam(entity) != TFTeam_Red)
+		int BuildingOwner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+		if(!IsPlayerSideBuilding(entity, BuildingOwner))
 			continue;
 		
 		static char plugin[64];
@@ -1048,7 +1062,7 @@ int Object_SupportBuildings(int owner, int &all = 0)
 				continue;
 			
 			all++;
-			if(GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity") == owner)
+			if(BuildingOwner == owner)
 				count++;
 		}
 	}
@@ -1092,6 +1106,7 @@ int Object_MaxSupportBuildings(int client, bool ingore_glass = false)
 	maxAllowed += Building_health_attribute; 
 	maxAllowed += Blacksmith_Additional_SupportBuildings(client); 
 	maxAllowed += Merchant_Additional_SupportBuildings(client); 
+	maxAllowed += Gunsaw_Additional_SupportBuildings(client);
 	if(CvarInfiniteCash.BoolValue)
 	{
 		maxAllowed += 999;
@@ -1108,15 +1123,11 @@ int Object_MaxSupportBuildings(int client, bool ingore_glass = false)
 			maxAllowed = 1;
 	}
 
-	if(i_NormalBarracks_HexBarracksUpgrades_2[client] & ZR_BARRACKS_TROOP_CLASSES)
+	if(IsBarracks(client))
 	{
 		if(!ingore_glass)
 		{
-			if(maxAllowed > 2)
-			{
-				maxAllowed = 2;
-
-			}
+			maxAllowed = 2;
 		}
 	}
 	return maxAllowed;
@@ -1146,10 +1157,9 @@ Action ObjectGeneric_ClotTakeDamage(int victim, int &attacker, int &inflictor, f
 		damage *= 0.75;
 	}
 	
-	if(GetTeam(victim) == TFTeam_Red)
+	int BuildingOwner = GetEntPropEnt(victim, Prop_Send, "m_hOwnerEntity");
+	if(IsPlayerSideBuilding(victim, BuildingOwner))
 	{
-		if(CurrentModifOn() == 2 || CurrentModifOn() == 3)
-			damage *= 1.25;
 
 		if(Rogue_Mode()) //buildings are refunded alot, so they shouldnt last long.
 		{
@@ -1239,6 +1249,7 @@ void DestroyBuildingDo(int entity, bool DontCheckAgain = false)
 		Call_Finish();
 	}
 	//no more hp.
+	VestanAssaultVehicle_ResetObject(entity);
 	SetEntProp(objstats.index, Prop_Data, "m_iHealth", 0);
 	objstats.PlayDeathSound();
 	float VecOrigin[3];
@@ -1262,6 +1273,7 @@ bool Const2_BuildingDestroySpecial(int entity)
 {
 	if(!Dungeon_Mode())
 		return false;
+	//can stay as red hardcode as its const2 only
 	if(GetTeam(entity) != TFTeam_Red)
 		return false;
 	ObjectGeneric objstats = view_as<ObjectGeneric>(entity);
@@ -1334,6 +1346,7 @@ bool Const2_ReConstructBuilding(int entity, bool DoHalf = false)
 {
 	if(!Dungeon_Mode())
 		return false;
+	//can stay as red hardcode as its const2 only
 	if(GetTeam(entity) != TFTeam_Red)
 		return false;
 	ObjectGeneric objstats = view_as<ObjectGeneric>(entity);
@@ -1390,7 +1403,8 @@ public void ObjBaseThink(int building)
 {
 	ObjectGeneric objstats = view_as<ObjectGeneric>(building);
 	//Fixes some issues when mounted
-	if(GetTeam(objstats.index) == TFTeam_Red)
+	int BuildingOwner = GetEntPropEnt(building, Prop_Send, "m_hOwnerEntity");
+	if(IsPlayerSideBuilding(building, BuildingOwner))
 	{
 		if(IsValidEntity(Building_Mounted[building]))
 		{
@@ -1438,7 +1452,8 @@ void BuildingUpdateTextHud(int building)
 			RemoveEntity(objstats.m_iWearable2);
 		return;
 	}
-	if(GetTeam(objstats.index) != TFTeam_Red || objstats.m_bConstructBuilding)
+	int BuildingOwner = GetEntPropEnt(building, Prop_Send, "m_hOwnerEntity");
+	if(!IsPlayerSideBuilding(building, BuildingOwner) || objstats.m_bConstructBuilding)
 	{
 		if(IsValidEntity(objstats.m_iWearable2))
 			RemoveEntity(objstats.m_iWearable2);
@@ -1620,7 +1635,8 @@ public void ObjectGeneric_ClotTakeDamage_Post(int victim, int attacker, int infl
 
 	if((damagetype & DMG_CRUSH))
 		return;
-	if(GetTeam(victim) != TFTeam_Red)
+	int BuildingOwner = GetEntPropEnt(victim, Prop_Send, "m_hOwnerEntity");
+	if(IsPlayerSideBuilding(victim, BuildingOwner))
 	{
 		ObjectGeneric objstats = view_as<ObjectGeneric>(victim);
 		int health = GetEntProp(victim, Prop_Data, "m_iHealth");
@@ -1646,7 +1662,7 @@ public void ObjectGeneric_ClotTakeDamage_Post(int victim, int attacker, int infl
 	}
 	float Damageafter = damage;
 	//only red buildings get 90% dmg res, this is done so its more easy to read the numbers on the buildings.
-	if(GetTeam(victim) == TFTeam_Red)
+	if(IsPlayerSideBuilding(victim, BuildingOwner))
 		Damageafter *= 0.1;
 	int dmg = FloatToInt_DamageValue_ObjBuilding(victim, Damageafter);
 	int health = GetEntProp(victim, Prop_Data, "m_iHealth");
@@ -1683,7 +1699,7 @@ public void ObjectGeneric_ClotTakeDamage_Post(int victim, int attacker, int infl
 		OnPostAttackUniqueWeapon(attacker, victim, weapon, i_HexCustomDamageTypes[victim]);
 #endif
 		//Do not show this event if they are attacked with DOT. Earls bleedin.
-		if(!(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED))
+	//	if(!(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED))
 		{
 			Event event = CreateEvent("npc_hurt");
 			if(event) 
@@ -1740,4 +1756,26 @@ public void ObjectGeneric_ClotTakeDamage_Post(int victim, int attacker, int infl
 	UpdateDoublebuilding(victim);
 	
 	return;
+}
+
+
+bool IsPlayerSideBuilding(int building, int owner)
+{
+	if(!Arena_Mode())
+	{
+		//fix
+		if(GetTeam(building) == TFTeam_Red)
+			return true;
+	}
+	ObjectGeneric objstats = view_as<ObjectGeneric>(building);
+	if(objstats.m_bConstructBuilding)
+		return true;
+	if(owner == -1)
+		return false;
+	if(IsValidClient(owner))
+		return true;
+	if(Citizen_IsIt(owner))
+		return true;
+
+	return false;
 }

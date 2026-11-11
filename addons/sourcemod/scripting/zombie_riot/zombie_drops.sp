@@ -124,7 +124,7 @@ public void DropPowerupChance(int entity)
 				SpawnMoney(entity, true); //Dont care.)
 		}
 	}
-	if(Rogue_Mode())
+	if(Rogue_Mode() || Arena_Mode())
 	{
 		return;
 	}
@@ -636,7 +636,6 @@ public Action Timer_Detect_Player_Near_Money(Handle timer, any entid)
 					{
 						if (IsValidClient(client_Hud) && IsPlayerAlive(client_Hud) && GetClientTeam(client_Hud) == view_as<int>(TFTeam_Red))
 						{
-							CashSpent[client_Hud] -= 500;
 							SetHudTextParams(-1.0, 0.30, 3.01, 125, 125, 255, 255);
 							SetGlobalTransTarget(client_Hud);
 							ShowHudText(client_Hud,  -1, "%t", "Max Money Activated");

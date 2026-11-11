@@ -83,7 +83,7 @@ static const char g_RocketReadyingSound[] = "misc/doomsday_cap_open_start.wav";
 
 static const char g_ShotgunFiringSound[] = ")weapons/tf2_backshot_shotty_crit.wav";
 
-static const char g_SpecialRangedAttackSound[] = "vo/mvm/norm/soldier_incoming01.mp3";
+static const char g_SpecialRangedAttackSound[] = "vo/mvm/norm/soldier_mvm_incoming01.mp3";
 
 static const char g_SelfLaunchingSound[] = ")weapons/rocket_pack_boosters_fire.wav";
 
@@ -1378,11 +1378,17 @@ public void ARIS_ShootGun(ARIS npc)
 	}
 	
 	// Blast
-	float vecMins[3] = { -85.0, -85.0, 0.0 };
-	float vecMaxs[3] = { 85.0, 85.0, 160.0 };
+	float vecBlastPos[3];
+	vecBlastPos = vecBarrelPos;
+	vecBlastPos[2] = vecPos[2];
+	
+	float vecMins[3] = { -30.0, -30.0, 0.0 };
+	float vecMaxs[3] = { 30.0, 30.0, 160.0 };
+	
+	//TE_DrawBox(-1, vecBlastPos, vecMins, vecMaxs, 3.5, view_as<int>({50, 255, 0, 255}));
 	
 	// I have no idea what these flags are, but it's what DoSwingTrace uses for aoe attacks
-	Handle trace = TR_TraceHullFilterEx(vecPos, vecPos, vecMins, vecMaxs, 1073741824, TraceFilter_ARIS_ShotgunBlast, npc.index);
+	Handle trace = TR_TraceHullFilterEx(vecBlastPos, vecBlastPos, vecMins, vecMaxs, 1073741824, TraceFilter_ARIS_ShotgunBlast, npc.index);
 	delete trace;
 	
 	float finalArmor;

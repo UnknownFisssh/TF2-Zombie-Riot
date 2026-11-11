@@ -533,6 +533,7 @@ methodmap RegaliaClass < CClotBody
 		npc.m_iBeaconsExist = 0;
 
 		FormatEx(c_HeadPlaceAttachmentGibName[npc.index], sizeof(c_HeadPlaceAttachmentGibName[]), "head");
+		func_NPCFuncWin[npc.index] = view_as<Function>(Raidmode_Expidonsa_Sensal_Win);
 
 		if(StrContains(data, "raid_hud") != -1)
 		{
@@ -1848,7 +1849,7 @@ static void HandleBeacons(RegaliaClass npc)
 	
 	Beacon = NPC_CreateByName("npc_starship_beacon", npc.index, fl_BeaconSpawnPos[selection], {0.0, 0.0, 0.0}, GetTeam(npc.index), npc.Anger ? "style1;lifeloss" : "style1");
 	int health = RoundToFloor(ReturnEntityMaxHealth(npc.index) * 0.07);	//like 7% hp of ship
-	if(Beacon < MaxClients)
+	if(Beacon <= MaxClients)
 		return;
 
 	npc.m_flBeaconRespawnTimer = GameTime + GetRandomFloat(10.0, 11.0 + (5.0 * npc.m_iBeaconsExist));
@@ -3733,7 +3734,7 @@ static Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &dam
 		npc.PlayLifeLossSound();
 		ApplyStatusEffect(npc.index, npc.index, "Ancient Melodies", FAR_FUTURE);
 	//	CommLines("", "M I S T E R  B E A S T");
-		if(i_RaidGrantExtra[npc.index])
+		if(i_RaidGrantExtra[npc.index] == 1)
 		{
 			for(int i; i < i_MaxcountNpcTotal; i++)
 			{
@@ -3802,7 +3803,7 @@ static void NPC_Death(int iNPC)
 	
 	npc.CleanEntities();
 
-	if(i_RaidGrantExtra[npc.index])
+	if(i_RaidGrantExtra[npc.index] == 1)
 	{
 		Waves_ClearWaves();
 		ForcePlayerWin();

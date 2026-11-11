@@ -642,7 +642,6 @@ static void EndRiftVote(bool WasRacist = false)
 
 static void GiveCash(int cash)
 {
-	CurrentCash += cash;
 	GlobalExtraCash += cash;
 	CPrintToChatAll("{green}%t", "Cash Gained!", cash);
 }
@@ -1090,7 +1089,7 @@ public void Rogue_BookOfLiver_Ally(int entity, StringMap map)
 {
 	//give all perks at once
 	i_CurrentEquippedPerk[entity] = (PERK_LOVER - 1);
-
+	i_CurrentEquippedPerk[entity] |= PERK_SYMBIOSOS_SHOT;
 }
 public void Rogue_BookOfLiver_Remove(int entity)
 {

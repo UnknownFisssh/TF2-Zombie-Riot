@@ -90,7 +90,7 @@ public void WepaonRiotgunFillerM2(int client, int weapon, bool crit, int slot)
 	//This is so it show up on hud for the m2 ability.
 	return;
 }
-void Enforcer_AbilityM2(int client, int weapon, int slot, int pushLevel, float pushforcemulti, bool IngoreAmmo = false)
+void Enforcer_AbilityM2(int client, int weapon, int slot, int pushLevel, float pushforcemulti, bool IngoreAmmo = false, int Special = 0)
 {
 //	if(IngoreAmmo)
 //		SetEntPropFloat(weapon, Prop_Send, "m_flNextSecondaryAttack", GetGameTime() + 3.0);
@@ -136,7 +136,7 @@ void Enforcer_AbilityM2(int client, int weapon, int slot, int pushLevel, float p
 		b_LagCompNPC_No_Layers = true;
 		StartLagCompensation_Base_Boss(client);
 		TR_TraceHullFilter(fPos, endPoint, hullMin, hullMax, 1073741824, Enforcer_TraceTargets, client);	// 1073741824 is CONTENTS_LADDER?
-		FinishLagCompensation_Base_boss();
+		FinishLagCompensation_Base_boss(.client = client);
 
 		for(int i; i < ammo; i++)
 		{
@@ -211,7 +211,11 @@ void Enforcer_AbilityM2(int client, int weapon, int slot, int pushLevel, float p
 			if(!IngoreAmmo)
 				EmitSoundToAll("weapons/shotgun/shotgun_dbl_fire.wav", client, SNDCHAN_STATIC, 80, _, 1.0);
 			else
+			{
+				if(Special == 1)
+					GiveArmorViaPercentage(client, 0.125, 1.0);
 				EmitSoundToAll("weapons/push_impact.wav", client, SNDCHAN_STATIC, 80, _, 1.0);
+			}
 
 			if(!IngoreAmmo)
 			{
@@ -245,11 +249,9 @@ void Enforcer_AbilityM2(int client, int weapon, int slot, int pushLevel, float p
 
 public bool Enforcer_TraceTargets(int entity, int contentsMask, int client)
 {
-	static char classname[64];
 	if(IsValidEntity(entity))
 	{
-		GetEntityClassname(entity, classname, sizeof(classname));
-		if(((b_ThisWasAnNpc[entity] && !b_NpcHasDied[entity]) || !StrContains(classname, "func_breakable", true)) && (GetTeam(entity) != GetTeam(client)))
+		if(IsValidEnemy(client, entity, true))
 		{
 			for(int i; i < sizeof(EnemiesHit); i++)
 			{
@@ -262,4 +264,27 @@ public bool Enforcer_TraceTargets(int entity, int contentsMask, int client)
 		}
 	}
 	return false;
+}
+
+
+
+
+public void Enforcer_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int zr_custom_damage)
+{
+	if(CheckInHud())
+		return;
+
+	if((zr_custom_damage & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED))
+		return;
+
+	if(IsIn_HitDetectionCooldown(weapon, weapon))
+	{
+		return;
+	}
+	Set_HitDetectionCooldown(weapon,weapon, GetGameTime() + 0.01);
+	float cooldown = Ability_Check_Cooldown(attacker, 2, weapon);
+	if(cooldown > 0.0)
+	{
+		Ability_Apply_Cooldown(attacker, 2, cooldown - 0.9, weapon, true);
+	}
 }

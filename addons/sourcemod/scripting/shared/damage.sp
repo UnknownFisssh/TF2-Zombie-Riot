@@ -232,7 +232,58 @@ stock bool Damage_AnyVictim(int victim, int &attacker, int &inflictor, float &da
 		if(b_ThisWasAnNpc[attacker])
 			f_InBattleDelay[attacker] = GetGameTime() + 6.0;
 #endif
+#if defined ZR
+	if(!b_IsATriggerHurt[attacker] && (Arena_Mode() || (attacker <= MaxClients && attacker > 0 && victim > 0 && victim <= MaxClients)))
+	{
+		//in PVP scenarios, we nerf damage by 10x
+		if(!CheckInHud())
+			damage *= 0.25;
+		
+		if(Arena_Mode())
+		{
+			if(!CheckInHud())
+			{
+				int rounds = Arena_GetRound();
+				if(rounds > 38)
+				{
+					damage *= 0.08;
+				}
+				else if(rounds > 28)
+				{
+					damage *= 0.15;
+				}
+				else if(rounds > 18)
+				{
+					damage *= 0.3;
+				}
+				else if(rounds > 8)
+				{
+					damage *= 0.4;
+				}
+			}
+		}
+		else
+		{
+			if(victim <= MaxClients)
+			{
+				switch(Armor_Level[victim])
+				{
+					case 50:
+						damage *= 0.75;
 
+					case 100:
+						damage *= 0.45;
+
+					case 150:
+						damage *= 0.2;
+
+					case 200, 250, 300:
+						damage *= 0.1;
+				}
+			}
+		}
+	}
+#endif
 	return false;
 }
 
@@ -252,34 +303,13 @@ stock bool Damage_PlayerVictim(int victim, int &attacker, int &inflictor, float 
 
 	if(!CheckInHud())
 		HudDamageIndicator(victim,damagetype, false);
+	float GameTime = GetGameTime();
 #if defined ZR
 
-	if(attacker <= MaxClients && attacker > 0 && attacker != 0)
-	{
-		if(victim <= MaxClients && victim > 0 && victim != 0)
-		{
-			//in PVP scenarios, we nerf damage by 10x
-			damage *= 0.35;
-			switch(Armor_Level[victim])
-			{
-				case 50:
-					damage *= 0.75;
-
-				case 100:
-					damage *= 0.45;
-
-				case 150:
-					damage *= 0.2;
-
-				case 200:
-					damage *= 0.1;
-			}
-		}
-	}
+	
 	if(VIPBuilding_Active())
 		return true;
 	
-	float GameTime = GetGameTime();
 
 	//FOR ANY WEAPON THAT NEEDS CUSTOM LOGIC WHEN YOURE HURT!!
 	//It will just return the same damage if nothing is done.
@@ -300,7 +330,7 @@ stock bool Damage_PlayerVictim(int victim, int &attacker, int &inflictor, float 
 		if(RaidbossIgnoreBuildingsLogic(1) && i_HealthBeforeSuit[victim] > 0)
 		{
 			if(!(i_HexCustomDamageTypes[victim] & ZR_ELEMENTAL_QUANTUM))
-				damage *= 3.0;	//when a raid is alive, make quantum armor bad at tanking
+				damage *= 1.5;	//when a raid is alive, make quantum armor bad at tanking
 		}
 	}
 	
@@ -339,7 +369,7 @@ stock bool Damage_PlayerVictim(int victim, int &attacker, int &inflictor, float 
 		
 			if((damage > float(flMaxHealth / 20) || flHealth < flMaxHealth / 5 || damage > 25.0) && f_WidowsWineDebuffPlayerCooldown[victim] < GameTime) //either too much dmg, or your health is too low.
 			{
-				f_WidowsWineDebuffPlayerCooldown[victim] = GameTime + 20.0;
+				f_WidowsWineDebuffPlayerCooldown[victim] = GameTime + 14.0;
 				
 				float vecVictim[3]; WorldSpaceCenter(victim, vecVictim);
 				
@@ -498,6 +528,48 @@ stock bool Damage_PlayerVictim(int victim, int &attacker, int &inflictor, float 
 		NPC_Ability_TrueStrength_OnTakeDamage(attacker, victim, weapon, damagetype, i_HexCustomDamageTypes[victim]);
 #endif	// RPG
 
+	if(!CheckInHud() && attacker <= MaxClients && attacker > 0)
+		OnTakeDamagePlayerSpecific(victim, attacker, inflictor, damage, damagetype, weapon);
+
+	if(attacker <= MaxClients && attacker > 0)
+	{
+		if(!CheckInHud())
+			DoClientHitmarker(attacker);
+		if(!(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED))
+		{
+			if(IsValidEntity(weapon))
+			{
+				float damageForce[3];
+				//dummy value
+				damage = NPC_OnTakeDamage_Equipped_Weapon_Logic(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, i_HexCustomDamageTypes[victim]);
+
+				if(!CheckInHud())
+				{
+#if defined ZR
+					OnTakeDamage_HandOfElderMages(attacker, weapon);
+					OsmosisElementalEffect_Detection(attacker, victim);
+#endif
+
+					OnTakeDamageOldExtraWeapons(victim, attacker, weapon);
+					OnTakeDamageBackstab(victim, attacker, inflictor, damage, damagetype, weapon, GameTime);
+				}
+			}
+		}
+	}
+	
+	if(!CheckInHud())
+	{
+		//Do armor.
+		if(!(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_NOAPPLYBUFFS_OR_DEBUFFS))
+		{
+			if(attacker <= MaxClients && attacker > 0)
+			{
+				if(IsValidEntity(weapon))
+					NPC_OnTakeDamage_Equipped_Weapon_Logic_PostCalc(victim, attacker, inflictor, damage, damagetype, weapon);	
+			}
+		}
+		
+	}
 	return false;
 }
 #endif	// Non-RTS
@@ -639,11 +711,10 @@ stock bool Damage_NPCVictim(int victim, int &attacker, int &inflictor, float &da
 
 		if(attacker <= MaxClients && attacker > 0)
 		{
+			if(!CheckInHud())
+				DoClientHitmarker(attacker);
 			if(!(i_HexCustomDamageTypes[victim] & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED))
 			{
-				if(!CheckInHud())
-					DoClientHitmarker(attacker);
-
 				if(IsValidEntity(weapon))
 				{
 					damage = NPC_OnTakeDamage_Equipped_Weapon_Logic(victim, attacker, inflictor, damage, damagetype, weapon, damageForce, damagePosition, i_HexCustomDamageTypes[victim]);
@@ -723,9 +794,33 @@ stock bool Damage_NPCVictim(int victim, int &attacker, int &inflictor, float &da
 		
 	}
 
+	if(!CheckInHud())
+		MageAttackDamageCheck_NpcTakeDamagePost(victim, attacker, weapon, i_HexCustomDamageTypes[victim]);
+	
 	return false;
 }
 
+void MageAttackDamageCheck_NpcTakeDamagePost(int victim, int attacker, int weapon, int zrcustomdamage)
+{
+	if(attacker > MaxClients)
+		return;
+	if((zrcustomdamage & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED))
+		return;
+
+	if(weapon < 0)
+		return;
+
+	if(!i_IsWandWeapon[weapon])
+		return;
+
+	float vecTarget[3]; WorldSpaceCenter(attacker, vecTarget );
+	float VecSelfNpc[3]; WorldSpaceCenter(victim, VecSelfNpc);
+	float flDistanceToTarget = GetVectorDistance(vecTarget, VecSelfNpc, true);
+	if(flDistanceToTarget > (500.0 * 500.0))
+		return;
+	ApplyStatusEffect(attacker, attacker, "Mana Recharge", 2.0);
+	
+}
 void NpcArmorExtra(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
 	CClotBody npc = view_as<CClotBody>(victim);
@@ -803,7 +898,19 @@ stock bool Damage_BuildingVictim(int victim, int &attacker, int &inflictor, floa
 #if defined ZR || defined RPG
 	OnTakeDamageResistanceBuffs(victim, attacker, inflictor, damage, damagetype, weapon);
 #endif
-
+#if defined ZR
+	switch(ZR_Get_Modifier())
+	{
+		case OLD_TIMES:
+		{
+			damage *= 1.25;
+		}
+		case NOSTALGICA:
+		{
+			damage *= 1.75;
+		}
+	}
+#endif
 	if(b_ThisEntityIgnored[victim])
 	{
 		//True damage ignores this.
@@ -1080,6 +1187,8 @@ static float Player_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attacker
 				return Player_OnTakeDamage_Fractal(victim, damage, damagePosition,attacker);
 		}
 	}
+
+	Gunsaw_Monologue_OnTakeDamage(victim, damage);
 	return damage;
 }
 
@@ -1263,6 +1372,10 @@ static stock float NPC_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attac
 		}
 		case WEAPON_BOOMSTICK:
 		{
+			if(Arena_Mode())
+			{
+				damage *= 0.65;
+			}
 			if(b_thisNpcIsARaid[victim])
 			{
 				damage *= 1.1; //due to how dangerous it is to get closer.
@@ -1442,7 +1555,7 @@ static stock float NPC_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attac
 		case WEAPON_CHEESY_PRIMARY:
 		{
 			if(!CheckInHud())
-				Cheese_OnTakeDamage_Primary(attacker, victim, damage, weapon);
+				Cheese_OnTakeDamage_Primary(attacker, victim, damage, weapon, damagetype);
 		}
 		case WEAPON_CHEMICAL_THROWER:
 		{
@@ -1462,7 +1575,7 @@ static stock float NPC_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attac
         case WEAPON_KIT_OMEGA_GAUSS:
         {
             if(!CheckInHud())
-            KitOmega_NPCTakeDamage_Gauss(attacker, victim, damage, weapon);
+           	 KitOmega_NPCTakeDamage_Gauss(attacker, victim, damage, weapon);
         }
         case WEAPON_KIT_PURGE_ANNAHILATOR:
         {
@@ -1484,6 +1597,10 @@ static stock float NPC_OnTakeDamage_Equipped_Weapon_Logic(int victim, int &attac
 		case WEAPON_BURNINGTHUMB:
 		{
 			BurningThumb_NPCTakeDamage(victim, attacker, damage, weapon);
+		}
+		case WEAPON_GUNSAW:
+		{
+			Gunsaw_NPCTakeDamage(victim, attacker);
 		}
 	}
 #endif
@@ -1733,7 +1850,7 @@ static stock void OnTakeDamageWidowsWine(int victim, int &attacker, int &inflict
 	{
 		if(f_WidowsWineDebuffPlayerCooldown[victim] < GameTime) //either too much dmg, or your health is too low.
 		{
-			f_WidowsWineDebuffPlayerCooldown[victim] = GameTime + 20.0;
+			f_WidowsWineDebuffPlayerCooldown[victim] = GameTime + 14.0;
 				
 			float vecVictim[3]; WorldSpaceCenter(victim,vecVictim);
 				
@@ -1901,7 +2018,13 @@ static stock bool OnTakeDamageBackstab(int victim, int &attacker, int &inflictor
 					attack_speed *= f_BackstabCooldown[weapon]; //extra delay.
 
 					damage *= 5.25;
-
+					if(Arena_Mode())
+						damage *= 7.0;
+					float DurationSpeed = 1.5;
+					if(b_thisNpcIsARaid[victim])
+						DurationSpeed = 2.3;
+					ApplyStatusEffect(attacker, attacker, "Backstab SpeedBonus", DurationSpeed);
+					
 #if defined ZR
 					CClotBody npc = view_as<CClotBody>(victim);
 
@@ -2016,12 +2139,9 @@ static stock bool OnTakeDamageBackstab(int victim, int &attacker, int &inflictor
 	else if(b_IsABow[weapon])
 	{
 		//arrows ignore inflictor?
-#if defined ZR
-		//f_InBattleHudDisableDelay[attacker] = GetGameTime() + f_Data_InBattleHudDisableDelay[attacker] + 2.0;
-#endif
 		f_InBattleDelay[attacker] = GetGameTime() + 3.0;
 		if(damagetype & DMG_CRIT)
-		{		
+		{
 			damage *= f_HeadshotDamageMultiNpc[victim];
 			damage *= 1.35;
 			DisplayCritAboveNpc(victim, attacker, true); //Display crit above head
@@ -2063,12 +2183,13 @@ static stock bool OnTakeDamagePlayerSpecific(int victim, int &attacker, int &inf
 	}
 #else
 	float CritChance = Attributes_GetOnPlayer(attacker, Attrib_CritChance, false,_, 0.0);
+	CritChance += float(StatusEffects_PoiseReturnCount(attacker)) * (0.00625);
 	if(CritChance && GetRandomFloat(0.0, 1.0) < (CritChance))
 	{
 		if(Rogue_Rift_BookOfWeakness())
-			damage *= 2.0;
-		else
 			damage *= 3.0;
+		else
+			damage *= 2.0;
 			
 		DisplayCritAboveNpc(victim, attacker, true); //Display crit above head
 	}
@@ -2329,11 +2450,11 @@ void EntityBuffHudShow(int victim, int attacker, char[] Debuff_Adder_left, char[
 	{
 		if(GetTeam(victim) != TFTeam_Red)
 		{
-			Format(Debuff_Adder_right, SizeOfChar, "%c%s", BufferAdd,Debuff_Adder_right);
+			Format(Debuff_Adder_right, SizeOfChar, "%s%s", BufferAdd,Debuff_Adder_right);
 		}
 		else
 		{
-			Format(Debuff_Adder_left, SizeOfChar, "%c%s", BufferAdd,Debuff_Adder_left);
+			Format(Debuff_Adder_left, SizeOfChar, "%s%s", BufferAdd,Debuff_Adder_left);
 		}
 	}
 }

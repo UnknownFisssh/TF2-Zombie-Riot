@@ -25,7 +25,7 @@ void VestanOfflineAvangard_MapStart()
 	strcopy(data.Plugin, sizeof(data.Plugin), "npc_avangard");
 	strcopy(data.Icon, sizeof(data.Icon), "victoria_avangard");
 	data.IconCustom = true;
-	data.Flags = 0;
+	data.Flags = MVM_CLASS_FLAG_MINIBOSS;
 	data.Category = Type_Vesta;
 	data.Precache = ClotPrecache;
 	data.Func = ClotSummon;
@@ -162,6 +162,12 @@ methodmap VestanOfflineAvangard < CClotBody
 		if(StrContains(data, "awaiting_mechanist") != -1)
 			b_AdvansedConstruction[npc.index] = true;
 
+		if(StrContains(data, "surv") != -1)
+		{
+			b_NpcIsInvulnerable[npc.index] = true;
+			b_NoHealthbar[npc.index] = 1;
+		}
+
 		SetEntityRenderColor(npc.index, 80, 50, 50, 255);
 
 		if(npc.m_bFUCKYOU_move_anim)
@@ -276,7 +282,7 @@ static void VestanOfflineAvangard_ClotThink(int iNPC)
 			SetVariantString("1.5");
 			AcceptEntityInput(npc.m_iWearable2, "SetModelScale");
 			Is_a_Medic[npc.index]=false;
-			npc.m_flSpawnTime = gameTime+50.0;
+			npc.m_flSpawnTime = gameTime+fl_ruina_battery_max[npc.index];
 		}
 		
 		if(npc.m_fbRangedSpecialOn && npc.m_flNextRangedAttack < gameTime)

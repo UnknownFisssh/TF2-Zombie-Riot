@@ -7,7 +7,7 @@ static Handle h_TimerFusionWeaponManagement[MAXPLAYERS+1] = {null, ...};
 #define NEARL_EXTRA_DAMAGE_SOUND "misc/ks_tier_04_kill_01.wav"
 #define NEARL_STUN_RANGE 200.0
 #define MAX_VOID_SHIELD_ALLOW 5
-bool b_WeaponAttackSpeedModified[MAXENTITIES];
+int b_WeaponAttackSpeedModified[MAXENTITIES];
 
 #define SICCERINO_FAST_ATTACK_SOUND "items/powerup_pickup_agility.wav"
 #define SICCERINO_PREPARE_SICCORS_SOUND "mvm/mvm_tele_activate.wav"
@@ -20,7 +20,6 @@ static const char g_Siccerino_snapSound[][] = {
 
 
 
-static float f_AniSoundSpam[MAXPLAYERS];
 static float Duration[MAXPLAYERS];
 static int Weapon_Id[MAXPLAYERS];
 
@@ -45,7 +44,6 @@ public void Fusion_Melee_OnMapStart()
 	for (int i = 0; i < (sizeof(g_Siccerino_snapSound));	i++) { PrecacheSound(g_Siccerino_snapSound[i]);	}
 	Zero(Duration);
 	Zero(Weapon_Id);
-	Zero(f_AniSoundSpam);
 	PrecacheSound(EMPOWER_SOUND);
 	PrecacheSound(SICCERINO_FAST_ATTACK_SOUND);
 	PrecacheSound(SICCERINO_PREPARE_SICCORS_SOUND);
@@ -465,7 +463,7 @@ public void Fusion_Melee_Nearl_Radiant_Knight(int client, int weapon, bool crit,
 							}
 						}
 					}
-					FinishLagCompensation_Base_boss();
+					FinishLagCompensation_Base_boss(.client = client);
 
 					fPos[2] += 40.0;
 					ParticleEffectAt(fPos, "asplode_hoodoo_embers", 1.0);
@@ -1374,7 +1372,7 @@ void DrawBigSiccerinoSiccors(int weapon_active, float Angles[3], int client, flo
 					BEAM_BuildingHit[building] = false;
 			}
 		}
-		FinishLagCompensation_Base_boss();
+		FinishLagCompensation_Base_boss(.client = client);
 	}
 }
 

@@ -432,7 +432,7 @@ public void Purnell_Delayed_MeleeAttack(DataPack pack)
 		b_LagCompNPC_No_Layers = true;
 		StartLagCompensation_Base_Boss(client);
 		TR_TraceHullFilter(fPos, endPoint, hullMin, hullMax, 1073741824, Purnell_DoSwingTrace, client);	// 1073741824 is CONTENTS_LADDER?
-		FinishLagCompensation_Base_boss();
+		FinishLagCompensation_Base_boss(.client = client);
 
 		
 		int MaxTargetsHit = PURNELL_MAX_TARGETS;
@@ -695,16 +695,18 @@ public void Weapon_PurnellBuff_M2(int client, int weapon, bool crit, int slot)
 		float MaxHealth = float(ReturnEntityMaxHealth(client));
 		if(MaxHealth >= 10000.0)
 			MaxHealth = 10000.0;
-		MaxHealth *= 0.1;
+		
 		float MaxHealthally = float(ReturnEntityMaxHealth(target));
 		if(MaxHealthally >= 10000.0)
 			MaxHealthally = 10000.0;
-		MaxHealthally *= 0.1;
-		HealEntityGlobal(client, client, MaxHealth, 0.5, 1.0, HEAL_SELFHEAL);
-		if(!LastMann)
-			HealEntityGlobal(client, target, MaxHealthally, 0.5, 1.0);
+		MaxHealth *= 0.15;
+		MaxHealthally *= 0.15;
 
-		HealPointToReinforce(client, 1, 0.02);
+		HealEntityGlobal(client, client, MaxHealth, 1.0, 0.5, HEAL_SELFHEAL);
+		if(!LastMann)
+			HealEntityGlobal(client, target, MaxHealthally, 1.0, 0.5);
+
+		HealPointToReinforce(client, 1, 0.04);
 		
 		float cooldown = b_PurnellLastMann ? 5.0 : 15.0;
 		

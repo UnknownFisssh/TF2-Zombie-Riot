@@ -34,9 +34,7 @@ public void Weapon_TexanBuisness(int attacker, float &damage, int damagetype)
 				velocity[2] += 150.0;    // a little boost to alleviate arcing issues
 
 			TeleportEntity(attacker, NULL_VECTOR, NULL_VECTOR, velocity);
-			SummonerRenerateResources(attacker, 24.0, 0.0, true);
 		}
-		SummonerRenerateResources(attacker, 6.4, 0.0, true);
 	}
 }
 
@@ -51,7 +49,7 @@ public void Texan_business_altattack(int client, int weapon, bool crit, int slot
 			float vecSwingForward[3];
 			StartLagCompensation_Base_Boss(client);
 			DoSwingTrace_Custom(swingTrace, client, vecSwingForward, 700.0, false, 45.0, true); //infinite range, and ignore walls!
-			FinishLagCompensation_Base_boss();
+			FinishLagCompensation_Base_boss(.client = client);
 
 			int target = TR_GetEntityIndex(swingTrace);	
 			delete swingTrace;

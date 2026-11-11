@@ -13,14 +13,12 @@ static int ShieldModel;
 static int ViewmodelRef[MAXPLAYERS] = {INVALID_ENT_REFERENCE, ...};
 static int WearableRef[MAXPLAYERS] = {INVALID_ENT_REFERENCE, ...};
 static int RIOT_EnemiesHit[MAX_TARGETS_HIT_RIOT];
-static float f_AniSoundSpam[MAXPLAYERS+1]={0.0, ...};
 static float f_AbiltiyCooldownHidden[MAXPLAYERS+1]={0.0, ...};
 
 #define SOUND_RIOTSHIELD_ACTIVATION "weapons/air_burster_explode1.wav"
 
 void Weapon_RiotShield_Map_Precache()
 {
-	Zero(f_AniSoundSpam);
 	Zero(f_AbiltiyCooldownHidden);
 	PrecacheSound(SOUND_RIOTSHIELD_ACTIVATION);
 	ShieldModel = PrecacheModel("models/player/items/sniper/knife_shield.mdl");
@@ -38,7 +36,7 @@ public void Weapon_RiotShield_M2_PaP(int client, int weapon, bool crit, int slot
 
 public void Weapon_RiotShield_M2_Alt(int client, int weapon, bool crit, int slot)
 {
-	Weapon_RiotShield_M2_Base(client, weapon, slot, 2);
+	Weapon_RiotShield_M2_Base(client, weapon, slot, 1);
 }
 
 static void Weapon_RiotShield_M2_Base(int client, int weapon, int slot, int pap)
@@ -78,7 +76,7 @@ static void Weapon_RiotShield_M2_Base(int client, int weapon, int slot, int pap)
 		StartLagCompensation_Base_Boss(client);
 		trace = TR_TraceHullFilterEx(fPos, endPoint, hullMin, hullMax, 1073741824, Shield_TraceTargets, client);	// 1073741824 is CONTENTS_LADDER?
 		CloseHandle(trace);
-		FinishLagCompensation_Base_boss();
+		FinishLagCompensation_Base_boss(.client = client);
 
 		bool RaidActive = false;
 
@@ -128,6 +126,7 @@ static void Weapon_RiotShield_M2_Base(int client, int weapon, int slot, int pap)
 			}
 			else
 			{
+				ApplyTempAttrib(weapon, 2, 0.65, 3.0);
 				ApplyTempAttrib(weapon, 6, 0.25, 3.0); //Make them attack WAY faster.
 			}
 			f_AbiltiyCooldownHidden[client] = GetGameTime() + 5.0;
@@ -313,25 +312,18 @@ public Action ThirdPersonTransmit(int entity, int client)
 
 static bool Shield_TraceTargets(int entity, int contentsMask, int client)
 {
-	static char classname[64];
 	if (IsValidEntity(entity))
 	{
-		if(0 < entity)
+		if(IsValidEnemy(client, entity, true))
 		{
-			GetEntityClassname(entity, classname, sizeof(classname));
-			
-			if (((b_ThisWasAnNpc[entity] && !b_NpcHasDied[entity]) || !StrContains(classname, "func_breakable", true)) && (GetTeam(entity) != GetTeam(client)))
+			for(int i=1; i <= (MAX_TARGETS_HIT_RIOT -1 ); i++)
 			{
-				for(int i=1; i <= (MAX_TARGETS_HIT_RIOT -1 ); i++)
+				if(!RIOT_EnemiesHit[i])
 				{
-					if(!RIOT_EnemiesHit[i])
-					{
-						RIOT_EnemiesHit[i] = entity;
-						break;
-					}
+					RIOT_EnemiesHit[i] = entity;
+					break;
 				}
 			}
-			
 		}
 	}
 	return false;
@@ -368,12 +360,14 @@ public float Player_OnTakeDamage_Riot_Shield(int victim, float &damage, int atta
 	{
 		return damage;
 	}
+
+
 	// Require armor charge
 	if(Armor_Charge[victim] < 1)
+	{
 		return damage;
+	}
 
-	if(damagetype & DMG_TRUEDAMAGE)
-		return damage;
 
 	
 	// need position of either the inflictor or the attacker
@@ -433,8 +427,11 @@ public float Player_OnTakeDamage_Riot_Shield(int victim, float &damage, int atta
 
 		}
 
-		damage *= resist;
-		
+
+		if(!(damagetype & DMG_TRUEDAMAGE))
+		{
+			damage *= resist;
+		}
 		if(f_AniSoundSpam[victim] < GetGameTime())
 		{
 			f_AniSoundSpam[victim] = GetGameTime() + 0.2;
@@ -444,9 +441,22 @@ public float Player_OnTakeDamage_Riot_Shield(int victim, float &damage, int atta
 				ClientCommand(victim, "playgamesound ambient/energy/spark%d.wav", 1 + (GetURandomInt() % 6));
 				Saga_ChargeReduction(victim, weapon, 0.5);
 
-				int ally = GetClosestAlly(victim, 100000.0, victim, Saga_ChargeValidityFunction);
+				int ally = GetClosestAlly(victim, 300.0 * 300.0, victim, Saga_ChargeValidityFunction);
 				if(ally > 0)
 				{
+					float VicLoc[3];
+					WorldSpaceCenter(victim, VicLoc);
+					float VicLoc2[3];
+					WorldSpaceCenter(ally, VicLoc2);
+					int color[4];
+					color[0] = 125;
+					color[1] = 125;
+					color[2] = 255;
+					color[3] = 255;
+					float amp = 1.5;
+					TE_SetupBeamPoints(VicLoc, VicLoc2, AmphiReturnLaserSprite(), 0, 0, 0, 0.15, 1.0, 1.2, 1, amp, color, 0);
+					TE_SendToAll();
+
 					ClientCommand(ally, "playgamesound ambient/energy/spark%d.wav", 1 + (GetURandomInt() % 6));
 
 					int i, other;
@@ -456,12 +466,9 @@ public float Player_OnTakeDamage_Riot_Shield(int victim, float &damage, int atta
 					}
 				}
 			}
-			else
-			{
-				ClientCommand(victim, "playgamesound Wood_Box.BulletImpact");
-			}
 		}
 	}
+
 
 	return damage;
 }

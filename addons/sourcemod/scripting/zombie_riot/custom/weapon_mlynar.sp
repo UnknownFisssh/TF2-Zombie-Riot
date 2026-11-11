@@ -19,7 +19,6 @@ static bool b_MlynarResetStats[MAXPLAYERS];
 int i_MlynarMaxDamageGetFromSameEnemy[MAXENTITIES];
 static float f_MlynarHurtDuration[MAXPLAYERS];
 static float f_MlynarReflectCooldown[MAXPLAYERS][MAXENTITIES];
-static float f_AniSoundSpam[MAXPLAYERS+1]={0.0, ...};
 static int i_RefWeaponDelete[MAXPLAYERS];
 
 //This will be used to tone down damage over time/on kill
@@ -38,7 +37,6 @@ void Mlynar_Map_Precache() //Anything that needs to be precaced like sounds or s
 	Zero2(f_MlynarReflectCooldown);
 	Zero(f_MlynarAbilityActiveTime);
 	Zero(b_MlynarResetStats);
-	Zero(f_AniSoundSpam);
 	PrecacheSound("items/powerup_pickup_knockout.wav");
 	PrecacheSound("misc/ks_tier_04.wav");
 }
@@ -220,7 +218,7 @@ public void Weapon_MlynarAttack_Internal(DataPack pack)
 				break;
 			}
 		}
-		FinishLagCompensation_Base_boss();
+		FinishLagCompensation_Base_boss(.client = client);
 	}
 	delete pack;
 }
@@ -402,10 +400,12 @@ public void Mlynar_Cooldown_Logic(int client, int weapon)
 				{
 					int entityindex = HitEntitiesSphereMlynar[entity_traced];
 					//do not get power from the same enemy more then 5 times. unless its a boss or raid, then allow more.
-					if(b_thisNpcIsARaid[entityindex])
+					if(b_thisNpcIsARaid[entityindex] || entityindex <= MaxClients)
 					{
 						//There is no limit to how often you can gather power from a raid.
 						GatherPower += 10;
+						if(Arena_Mode())
+							GatherPower += 5;
 					}
 					else if (b_thisNpcIsABoss[entityindex] && i_MlynarMaxDamageGetFromSameEnemy[entityindex] < 400)
 					{
@@ -424,9 +424,13 @@ public void Mlynar_Cooldown_Logic(int client, int weapon)
 			if(GatherPower > 0)
 			{
 				//we can gather power from upto 5 enemies at once, the more the faster.
-				if(GatherPower > 10)
+				if(GatherPower > 10 && !Arena_Mode())
 				{
 					GatherPower = 10;
+				}
+				if(GatherPower > 25 && Arena_Mode())
+				{
+					GatherPower = 25;
 				}
 				f_MlynarDmgMultiAgressiveClose[client] += (0.0015 * float(GatherPower));
 				if(i_CustomWeaponEquipLogic[weapon] == WEAPON_MLYNAR_PAP_2)
@@ -442,7 +446,7 @@ public void Mlynar_Cooldown_Logic(int client, int weapon)
 			if(f_MlynarHurtDuration[client] > GetGameTime())
 			{
 				f_MlynarDmgMultiHurt[client] += 0.01;
-				if(RaidbossIgnoreBuildingsLogic(1)) //During raids, give power 2x as fast.
+				if(RaidbossIgnoreBuildingsLogic(1) || Arena_Mode()) //During raids, give power 2x as fast.
 				{
 					f_MlynarDmgMultiHurt[client] += 0.01;
 				}
@@ -499,6 +503,9 @@ float Player_OnTakeDamage_Mlynar(int victim, float &damage, int attacker, int we
 	//dont reflect burn or bleed
 	if(damagezrcustom & ZR_DAMAGE_DO_NOT_APPLY_BURN_OR_BLEED)
 		return damage;
+
+	if(Arena_Mode())
+		damage *= 0.8;
 	f_MlynarHurtDuration[victim] = GetGameTime() + 1.0;
 	//insert reflect code.
 	if(f_MlynarReflectCooldown[victim][attacker] < GetGameTime())

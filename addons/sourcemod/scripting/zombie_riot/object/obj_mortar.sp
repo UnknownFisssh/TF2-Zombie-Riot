@@ -131,7 +131,7 @@ public void BuildingMortarAction(int client, int mortar)
 	
 	Handle trace = TR_TraceRayFilterEx(eyePos, eyeAng, MASK_SHOT, RayType_Infinite, TraceEntityFilterPlayer);
 	
-	FinishLagCompensation_Base_boss();
+	FinishLagCompensation_Base_boss(.client = client);
 	if (TR_DidHit(trace))
 	{
 		TR_GetEndPosition(spawnLoc, trace);
@@ -249,7 +249,7 @@ public Action MortarFire(Handle timer, DataPack pack)
 
 			attack_speed = 1.0 / Attributes_GetOnPlayer(client, 343, true, true); //Sentry attack speed bonus
 				
-			damage = attack_speed * damage * Attributes_GetOnPlayer(client, 287, true, true);			//Sentry damage bonus
+			damage = attack_speed * damage * Attributes_GetOnPlayer(client, 287, true);			//Sentry damage bonus
 			
 			sentry_range = Attributes_GetOnPlayer(client, 344, true, true);			//Sentry Range bonus
 			

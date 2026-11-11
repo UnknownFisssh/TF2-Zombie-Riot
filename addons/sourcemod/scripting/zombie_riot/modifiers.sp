@@ -3,15 +3,7 @@
 
 static bool MaxMiniBoss;
 static int CurrentModifActive = 0;
-
-#define CHAOS_INTRUSION 1
-#define SECONDARY_MERCS 2
-#define OLD_TIMES 3
-#define TURBOLENCES 4
-#define PARANORMAL_ACTIVITY 5
-#define PREFIX_GALORE 6
-#define PREFIX_ONESTAND 7
-
+static int BadBalanceSeed = 0;
 void Modifier_MiniBossSpawn(bool &spawns)
 {
 	if(MaxMiniBoss)
@@ -74,6 +66,19 @@ public void Modifier_Collect_OldTimes()
 {
 	CurrentModifActive = OLD_TIMES;
 }
+public void Modifier_Collect_Nostalica()
+{
+	CurrentModifActive = NOSTALGICA;
+}
+public void Modifier_Collect_KitersDream()
+{
+	CurrentModifActive = KITERS_DREAM;
+}
+public void Modifier_Collect_BadBalance()
+{
+	BadBalanceSeed = GetURandomInt();
+	CurrentModifActive = BAD_BALANCE;
+}
 
 public void Modifier_Collect_Turbolences()
 {
@@ -94,7 +99,6 @@ public void Modifier_Remove_ParanormalActivity()
 {
 	CurrentModifActive = 0;
 }
-
 public int ZR_Get_Modifier()
 {
 	return CurrentModifActive;
@@ -137,6 +141,7 @@ public void ZRModifs_ChaosIntrusionNPC(int iNpc)
 	SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(Health) * 1.30));
 	fl_GibVulnerablity[iNpc] *= 1.30;
 	fl_Extra_Speed[iNpc] *= 1.03;
+	ExtendRaidTimer(iNpc, 1.25);
 }
 
 public void ZRModifs_SecondaryMercsNPC(int iNpc)
@@ -147,6 +152,7 @@ public void ZRModifs_SecondaryMercsNPC(int iNpc)
 	SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(Health) * 1.50));
 	fl_GibVulnerablity[iNpc] *= 1.50;
 	fl_Extra_Speed[iNpc] *= 1.04;
+	ExtendRaidTimer(iNpc, 1.35);
 }
 
 public void ZRModifs_OldTimesNPC(int iNpc)
@@ -158,8 +164,65 @@ public void ZRModifs_OldTimesNPC(int iNpc)
 	fl_GibVulnerablity[iNpc] *= 1.6;
 	fl_Extra_Speed[iNpc] *= 1.06;
 	f_AttackSpeedNpcIncrease[iNpc] *= 0.75;
+	ExtendRaidTimer(iNpc, 1.5);
+}
+public void ZRModifs_NostalicaNPC(int iNpc)
+{
+	fl_Extra_Damage[iNpc] *= 1.50;
+	int Health = GetEntProp(iNpc, Prop_Data, "m_iMaxHealth");
+	SetEntProp(iNpc, Prop_Data, "m_iHealth", RoundToCeil(float(Health) * 1.6));
+	SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(Health) * 1.6));
+	fl_GibVulnerablity[iNpc] *= 1.6;
+	f_AttackSpeedNpcIncrease[iNpc] *= 0.75;
+	fl_Extra_RangedArmor[iNpc] *= 0.75;
+	if(b_thisNpcIsARaid[iNpc])
+	{
+		SetEntProp(iNpc, Prop_Data, "m_iHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 1.25));
+		SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 1.25));
+		fl_Extra_Damage[iNpc] *= 1.25;
+	}
+	else if(b_thisNpcIsABoss[iNpc])
+	{
+		SetEntProp(iNpc, Prop_Data, "m_iHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 1.25));
+		SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 1.25));
+		fl_Extra_Damage[iNpc] *= 1.35;
+	}
+	ExtendRaidTimer(iNpc, 1.25);
 }
 
+public void ZRModifsPlayer_Nostalica(int entity, StringMap map)
+{
+	if(map)	// Player
+	{
+		// +25% less hp
+		float value = 1.0;
+		map.GetValue("26", value);
+		map.SetValue("26", value * 0.75);
+		// +10% less speed
+		value = 1.0;
+		map.GetValue("107", value);
+		map.SetValue("107", value * 0.9);
+	}
+	else
+	{
+		if(b_ThisWasAnNpc[entity] || i_NpcIsABuilding[entity] || i_IsABuilding[entity])
+			return;
+		// +15% damage bonus for melee's
+		
+		char classname[36];
+		GetEntityClassname(entity, classname, sizeof(classname));
+		int WeaponSlot = TF2_GetClassnameSlot(classname, entity);
+		if(i_OverrideWeaponSlot[entity] != -1)
+		{
+			WeaponSlot = i_OverrideWeaponSlot[entity];
+		}
+		//melee or mage weapons that are melee
+		if(WeaponSlot == TFWeaponSlot_Melee || i_IsWandWeapon[entity] == 2)
+		{
+			Attributes_SetMulti(entity, 54, (1.0 / 0.9));
+		}
+	}
+}
 float ZRModifs_MaxSpawnsAlive()
 {
 	float Return = 1.0;
@@ -169,7 +232,7 @@ float ZRModifs_MaxSpawnsAlive()
 		{
 			Return *= 1.10;
 		}
-		case SECONDARY_MERCS, OLD_TIMES:
+		case SECONDARY_MERCS, OLD_TIMES, NOSTALGICA:
 		{
 			Return *= 1.20;
 		}
@@ -225,7 +288,7 @@ float ZRModifs_MaxSpawnWaveModif()
 		{
 			Return *= 1.25;
 		}
-		case SECONDARY_MERCS, OLD_TIMES:
+		case SECONDARY_MERCS, OLD_TIMES, NOSTALGICA:
 		{
 			Return *= 1.35;
 		}
@@ -261,6 +324,14 @@ void ZRModifs_CharBuffToAdd(char[] data)
 		{
 			FormatEx(data, 12, "OS");
 		}
+		case NOSTALGICA:
+		{
+			FormatEx(data, 12, "NO");
+		}
+		case KITERS_DREAM:
+		{
+			FormatEx(data, 12, "KI");
+		}
 	}
 }
 public void ZRModifs_ModifEnemy_OneStand(int iNpc)
@@ -278,7 +349,112 @@ public void ZRModifs_ModifEnemy_OneStand(int iNpc)
 	}
 }
 
-int CurrentModifOn()
+
+#define MAX_BAD_BALANCE 10
+
+public void ZRModifs_BadBalance(int iNpc)
 {
-	return CurrentModifActive;
+	int ResultChange = 0;
+	ResultChange = ((i_NpcInternalId[iNpc] ^ BadBalanceSeed) % (MAX_BAD_BALANCE));
+	if(b_thisNpcIsARaid[iNpc])
+	{
+		ResultChange = GetRandomInt(0, MAX_BAD_BALANCE);
+	}
+	Modifiers_Change_BadBalance(iNpc, ResultChange);
+}
+
+
+void Modifiers_Change_BadBalance(int iNpc, int ResultChange)
+{
+	switch(ResultChange)
+	{
+		case 1:
+		{
+			//tiny overall buff
+			SetEntProp(iNpc, Prop_Data, "m_iHealth", 	RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 1.25));
+			SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 1.25));
+			fl_Extra_Damage[iNpc] 			*= 1.25;
+			fl_Extra_RangedArmor[iNpc] 		*= 0.9;
+			fl_Extra_MeleeArmor[iNpc] 		*= 0.9;
+			ExtendRaidTimer(iNpc, 1.35);
+		}
+		case 2:
+		{
+			//Massive overall buff
+			SetEntProp(iNpc, Prop_Data, "m_iHealth", 	RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 2.5));
+			SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 2.5));
+			fl_Extra_Damage[iNpc] 			*= 2.5;
+			fl_Extra_RangedArmor[iNpc] 		*= 0.65;
+			fl_Extra_MeleeArmor[iNpc] 		*= 0.85;
+			ExtendRaidTimer(iNpc, 2.0);
+		}
+		case 3:
+		{
+			//very fast thinking
+			f_AttackSpeedNpcIncrease[iNpc] 	*= 0.5;
+			fl_Extra_Speed[iNpc] *= 1.15;
+			//no change is done
+		}
+		case 4:
+		{
+			//Nerf overall
+			SetEntProp(iNpc, Prop_Data, "m_iHealth", 	RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 0.8));
+			SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 0.8));
+			fl_Extra_Damage[iNpc] 			*= 0.8;
+		}
+		case 5:
+		{
+			//Very Tanky
+			SetEntProp(iNpc, Prop_Data, "m_iHealth", 	RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 5.0));
+			SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 5.0));
+			ExtendRaidTimer(iNpc, 3.0);
+		}
+		case 6:
+		{
+			//Melee Immunity
+			fl_Extra_MeleeArmor[iNpc] 		*= 0.1;
+		}
+		case 7:
+		{
+			//Ranged Immunity
+			fl_Extra_RangedArmor[iNpc] 		*= 0.1;
+		}
+		case 8:
+		{
+			//massive damage
+			fl_Extra_Damage[iNpc] 			*= 4.0;
+		}
+		case 9:
+		{
+			//very fast thinking
+			f_AttackSpeedNpcIncrease[iNpc] 	*= 2.0;
+			fl_Extra_Damage[iNpc] 			*= 3.0;
+			//no change is done
+		}
+		case MAX_BAD_BALANCE:
+		{
+			//Massive overall Nerf
+			SetEntProp(iNpc, Prop_Data, "m_iHealth", 	RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 0.7));
+			SetEntProp(iNpc, Prop_Data, "m_iMaxHealth", RoundToCeil(float(ReturnEntityMaxHealth(iNpc)) * 0.7));
+			fl_Extra_Damage[iNpc] 			*= 0.5;
+			fl_Extra_RangedArmor[iNpc] 		*= 1.25;
+			fl_Extra_MeleeArmor[iNpc] 		*= 1.35;
+		}
+	}
+}
+
+
+void ExtendRaidTimer(int iNpc , float MultiplyTime)
+{
+	//prevent duos somehow?
+	if(b_thisNpcIsARaid[iNpc] && EntRefToEntIndex(RaidBossActive) == iNpc)
+	{
+		float Timer_Show = RaidModeTime - GetGameTime();
+	
+		if(Timer_Show < 0.0)
+			Timer_Show = 0.0;
+
+		Timer_Show *= MultiplyTime;
+		RaidModeTime = GetGameTime() + Timer_Show;
+	}
 }
